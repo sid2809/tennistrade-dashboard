@@ -1,0 +1,121 @@
+<%- include('partials/header', { page: 'home', pageTitle: 'Overview' }) %>
+
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <span class="badge badge-live" id="clock"></span>
+</div>
+
+<% if (stats) { %>
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-label">Bankroll</div>
+    <div class="stat-value big"><%= stats.bankroll ? '₹' + parseFloat(stats.bankroll.value || 50000).toLocaleString() : '₹50,000' %></div>
+    <% if (stats.paperTrades) { %>
+      <div class="stat-sub <%= parseFloat(stats.paperTrades.total_pnl) >= 0 ? 'positive' : 'negative' %>">
+        P&L: ₹<%= parseFloat(stats.paperTrades.total_pnl || 0).toLocaleString() %>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Paper Trades</div>
+    <div class="stat-value big"><%= stats.paperTrades ? stats.paperTrades.total : 0 %></div>
+    <div class="stat-sub">
+      <span class="positive"><%= stats.paperTrades ? stats.paperTrades.wins : 0 %> W</span> / 
+      <span class="negative"><%= stats.paperTrades ? stats.paperTrades.losses : 0 %> L</span> /
+      <span><%= stats.paperTrades ? stats.paperTrades.open : 0 %> open</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Database</div>
+    <div class="stat-value big"><%= stats.totalMatches ? parseInt(stats.totalMatches.c).toLocaleString() : '—' %></div>
+    <div class="stat-sub">matches loaded</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Players Rated</div>
+    <div class="stat-value big"><%= stats.totalPlayers ? parseInt(stats.totalPlayers.c).toLocaleString() : '—' %></div>
+    <div class="stat-sub">with Elo + stats</div>
+  </div>
+</div>
+
+<% if (stats.recentTrades && stats.recentTrades.length > 0) { %>
+<div class="section">
+  <div class="section-header">
+    <h2>Recent Paper Trades</h2>
+    <a href="/trades" class="link">View all →</a>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Strategy</th>
+          <th>Side</th>
+          <th>Match</th>
+          <th>Entry</th>
+          <th>Exit</th>
+          <th>P&L</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% stats.recentTrades.forEach(t => { %>
+        <tr>
+          <td><span class="badge badge-<%= (t.strategy || '').toLowerCase() %>"><%= t.strategy %></span></td>
+          <td><span class="badge <%= t.entry_side === 'BACK' ? 'badge-back' : 'badge-lay' %>"><%= t.entry_side %></span></td>
+          <td class="match-cell"><%= t.player1 %> vs <%= t.player2 %><br><small class="muted"><%= t.tournament %> · <%= t.surface %></small></td>
+          <td class="mono"><%= t.entry_odds ? parseFloat(t.entry_odds).toFixed(2) : '—' %></td>
+          <td class="mono"><%= t.exit_odds ? parseFloat(t.exit_odds).toFixed(2) : '—' %></td>
+          <td class="mono <%= t.pnl > 0 ? 'positive' : t.pnl < 0 ? 'negative' : '' %>">
+            <%= t.pnl ? '₹' + parseFloat(t.pnl).toLocaleString() : '—' %>
+          </td>
+          <td><span class="badge <%= t.status === 'OPEN' ? 'badge-open' : 'badge-closed' %>"><%= t.status %></span></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<div class="stat-grid cols-2">
+  <div class="section">
+    <h2>Quick Links</h2>
+    <div class="quick-links">
+      <a href="/predictions" class="quick-link">📊 Today's Predictions</a>
+      <a href="/players?q=Sinner" class="quick-link">🔍 Player Lookup</a>
+      <a href="/trades?period=today" class="quick-link">📝 Today's Trades</a>
+      <a href="/radar" class="quick-link">📡 Radar Status</a>
+    </div>
+  </div>
+  <div class="section">
+    <h2>System Status</h2>
+    <div class="status-grid">
+      <div class="status-row">
+        <span>Database</span>
+        <span class="badge badge-live">Connected</span>
+      </div>
+      <div class="status-row">
+        <span>Matches loaded</span>
+        <span class="mono"><%= stats.totalMatches ? parseInt(stats.totalMatches.c).toLocaleString() : '—' %></span>
+      </div>
+      <div class="status-row">
+        <span>Odds loaded</span>
+        <span class="mono"><%= stats.totalOdds ? parseInt(stats.totalOdds.c).toLocaleString() : '—' %></span>
+      </div>
+      <div class="status-row">
+        <span>Players with stats</span>
+        <span class="mono"><%= stats.totalPlayers ? parseInt(stats.totalPlayers.c).toLocaleString() : '—' %></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% } else { %>
+<div class="empty-state">
+  <p>Dashboard loading... Make sure the database is connected and data is loaded.</p>
+</div>
+<% } %>
+
+<%- include('partials/footer') %>

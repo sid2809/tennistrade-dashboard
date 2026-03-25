@@ -1,0 +1,104 @@
+<%- include('partials/header', { page: 'radar', pageTitle: 'Radar' }) %>
+
+<div class="page-header">
+  <h1>Radar Status</h1>
+  <span class="badge badge-live" id="clock"></span>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-label">Bankroll</div>
+    <div class="stat-value big">₹<%= parseFloat(bankroll).toLocaleString() %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Today's P&L</div>
+    <div class="stat-value big <%= parseFloat(todayStats.pnl || 0) >= 0 ? 'positive' : 'negative' %>">
+      ₹<%= parseFloat(todayStats.pnl || 0).toLocaleString() %>
+    </div>
+    <div class="stat-sub"><%= todayStats.total || 0 %> trades, <%= todayStats.wins || 0 %> wins</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Open Positions</div>
+    <div class="stat-value big"><%= openTrades.length %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Last Activity</div>
+    <div class="stat-value small">
+      <% if (lastTrade) { %>
+        <%= lastTrade.strategy %> — <%= lastTrade.player1 %> v <%= lastTrade.player2 %>
+        <div class="stat-sub"><%= lastTrade.entry_time ? new Date(lastTrade.entry_time).toLocaleString() : '—' %></div>
+      <% } else { %>
+        No trades yet
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<% if (openTrades.length > 0) { %>
+<div class="section">
+  <div class="section-header">
+    <h2>Open Positions</h2>
+    <span class="badge badge-open"><%= openTrades.length %> open</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Strategy</th>
+          <th>Side</th>
+          <th>Match</th>
+          <th>Entry Odds</th>
+          <th>Stake</th>
+          <th>Liability</th>
+          <th>Entry Score</th>
+          <th>Opened</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% openTrades.forEach(t => { %>
+        <tr class="open-trade-row">
+          <td class="mono small"><%= t.trade_id %></td>
+          <td><span class="badge badge-<%= (t.strategy || '').toLowerCase() %>"><%= t.strategy %></span></td>
+          <td><span class="badge <%= t.entry_side === 'BACK' ? 'badge-back' : 'badge-lay' %>"><%= t.entry_side %></span></td>
+          <td><%= t.player1 %> v <%= t.player2 %><br><small class="muted"><%= t.tournament %></small></td>
+          <td class="mono"><%= parseFloat(t.entry_odds).toFixed(2) %></td>
+          <td class="mono">₹<%= parseFloat(t.entry_stake).toFixed(0) %></td>
+          <td class="mono">₹<%= parseFloat(t.entry_liability).toFixed(0) %></td>
+          <td class="mono"><%= t.entry_score %></td>
+          <td class="mono small"><%= t.entry_time ? new Date(t.entry_time).toLocaleTimeString() : '—' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<div class="section">
+  <h2>How It Works</h2>
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-icon">📡</div>
+      <div class="info-title">Polling</div>
+      <div class="info-desc">Radar polls API-Tennis every 15s for live match scores, serve data, and odds</div>
+    </div>
+    <div class="info-card">
+      <div class="info-icon">🔍</div>
+      <div class="info-title">Scanning</div>
+      <div class="info-desc">T1-T5 strategies scan every match for structural trading situations</div>
+    </div>
+    <div class="info-card">
+      <div class="info-icon">📝</div>
+      <div class="info-title">Paper Trading</div>
+      <div class="info-desc">Every signal auto-executes as a virtual trade with real odds</div>
+    </div>
+    <div class="info-card">
+      <div class="info-icon">📊</div>
+      <div class="info-title">Tracking</div>
+      <div class="info-desc">P&L, win rate, and strategy performance tracked in real-time</div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

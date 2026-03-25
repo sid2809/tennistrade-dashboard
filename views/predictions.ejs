@@ -1,0 +1,174 @@
+<%- include('partials/header', { page: 'predictions', pageTitle: 'Predictions' }) %>
+
+<div class="page-header">
+  <h1>Predictions & Suggested Trades</h1>
+  <span class="mono muted"><%= date %></span>
+</div>
+
+<% if (valueBets && valueBets.length > 0) { %>
+<div class="section">
+  <div class="section-header">
+    <h2>🎯 Value Bets (15%+ Edge)</h2>
+    <span class="badge badge-live"><%= valueBets.length %> found</span>
+  </div>
+  <div class="card-grid">
+    <% valueBets.forEach(v => { %>
+    <div class="prediction-card value-bet">
+      <div class="prediction-header">
+        <span class="badge badge-t6">T6</span>
+        <span class="edge-badge">+<%= v.edge %>% edge</span>
+      </div>
+      <div class="prediction-match">
+        <div class="prediction-player"><%= v.player1 %> <span class="mono muted">(<%= v.p1_elo %>)</span></div>
+        <div class="vs">vs</div>
+        <div class="prediction-player"><%= v.player2 %> <span class="mono muted">(<%= v.p2_elo %>)</span></div>
+      </div>
+      <div class="prediction-details">
+        <div class="detail-row">
+          <span>Tournament</span>
+          <span><%= v.tournament %></span>
+        </div>
+        <div class="detail-row">
+          <span>Surface</span>
+          <span class="surface-tag surface-<%= (v.surface || '').toLowerCase() %>"><%= v.surface %></span>
+        </div>
+        <div class="detail-row">
+          <span>Bet on</span>
+          <span class="highlight"><%= v.bet_on %></span>
+        </div>
+        <div class="detail-row">
+          <span>Model prob</span>
+          <span class="mono"><%= v.elo_prob %>%</span>
+        </div>
+        <div class="detail-row">
+          <span>Best odds</span>
+          <span class="mono"><%= v.bet_odds ? parseFloat(v.bet_odds).toFixed(2) : '—' %></span>
+        </div>
+        <div class="detail-row">
+          <span>Stake</span>
+          <span class="mono"><%= v.stake_pct %></span>
+        </div>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+</div>
+<% } %>
+
+<% if (tradeable && tradeable.length > 0) { %>
+<div class="section">
+  <div class="section-header">
+    <h2>⚡ Tradeable Matches</h2>
+    <span class="muted">Matches with T1/T3/T4 potential</span>
+  </div>
+  <div class="card-grid">
+    <% tradeable.forEach(t => { %>
+    <div class="prediction-card trade-card">
+      <div class="prediction-header">
+        <% t.strategies.forEach(s => { %>
+          <span class="badge badge-<%= s.type.toLowerCase() %>"><%= s.type %></span>
+        <% }) %>
+        <span class="mono muted">Elo gap: <%= t.elo_gap %></span>
+      </div>
+      <div class="prediction-match">
+        <div class="prediction-player <%= t.favorite === t.player1 ? 'fav' : '' %>">
+          <%= t.player1 %> <span class="mono muted">(<%= t.p1_elo %>)</span>
+        </div>
+        <div class="vs">vs</div>
+        <div class="prediction-player <%= t.favorite === t.player2 ? 'fav' : '' %>">
+          <%= t.player2 %> <span class="mono muted">(<%= t.p2_elo %>)</span>
+        </div>
+      </div>
+      <div class="prediction-details">
+        <div class="detail-row">
+          <span>Tournament</span>
+          <span><%= t.tournament %> · <%= t.surface %></span>
+        </div>
+        <div class="detail-row">
+          <span>Favorite</span>
+          <span class="highlight"><%= t.favorite %></span>
+        </div>
+        <% if (t.p1_stats) { %>
+        <div class="detail-row">
+          <span><%= t.player1 %> hold/brk</span>
+          <span class="mono"><%= t.p1_stats.serve_hold_pct ? (t.p1_stats.serve_hold_pct * 100).toFixed(0) : '—' %>% / <%= t.p1_stats.break_rate ? (t.p1_stats.break_rate * 100).toFixed(0) : '—' %>%</span>
+        </div>
+        <% } %>
+        <% if (t.p2_stats) { %>
+        <div class="detail-row">
+          <span><%= t.player2 %> hold/brk</span>
+          <span class="mono"><%= t.p2_stats.serve_hold_pct ? (t.p2_stats.serve_hold_pct * 100).toFixed(0) : '—' %>% / <%= t.p2_stats.break_rate ? (t.p2_stats.break_rate * 100).toFixed(0) : '—' %>%</span>
+        </div>
+        <% } %>
+        <% t.strategies.forEach(s => { %>
+        <div class="strategy-note">
+          <span class="badge badge-<%= s.type.toLowerCase() %> small"><%= s.type %></span>
+          <span><%= s.desc %></span>
+          <span class="badge badge-conf-<%= s.confidence.toLowerCase().replace('-','') %>"><%= s.confidence %></span>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+</div>
+<% } %>
+
+<% if (predictions && predictions.length > 0) { %>
+<div class="section">
+  <div class="section-header">
+    <h2>📋 All Matches (<%= date %>)</h2>
+    <span class="mono muted"><%= predictions.length %> matches</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table compact">
+      <thead>
+        <tr>
+          <th>Tour</th>
+          <th>Tournament</th>
+          <th>Surface</th>
+          <th>Round</th>
+          <th>Player 1</th>
+          <th>Elo</th>
+          <th>Player 2</th>
+          <th>Elo</th>
+          <th>Model P1</th>
+          <th>Odds P1</th>
+          <th>Edge P1</th>
+          <th>Odds P2</th>
+          <th>Edge P2</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% predictions.forEach(p => { %>
+        <tr>
+          <td><%= p.tour %></td>
+          <td><%= p.tournament %></td>
+          <td><span class="surface-tag surface-<%= (p.surface || '').toLowerCase() %>"><%= p.surface %></span></td>
+          <td><%= p.round %></td>
+          <td class="player-name"><%= p.player1 %></td>
+          <td class="mono"><%= p.p1_elo %></td>
+          <td class="player-name"><%= p.player2 %></td>
+          <td class="mono"><%= p.p2_elo %></td>
+          <td class="mono"><%= p.elo_prob_p1 %>%</td>
+          <td class="mono"><%= p.odds_p1 ? parseFloat(p.odds_p1).toFixed(2) : '—' %></td>
+          <td class="mono <%= parseFloat(p.edge_p1) > 10 ? 'positive' : parseFloat(p.edge_p1) < -5 ? 'negative' : '' %>">
+            <%= p.edge_p1 ? p.edge_p1 + '%' : '—' %>
+          </td>
+          <td class="mono"><%= p.odds_p2 ? parseFloat(p.odds_p2).toFixed(2) : '—' %></td>
+          <td class="mono <%= parseFloat(p.edge_p2) > 10 ? 'positive' : parseFloat(p.edge_p2) < -5 ? 'negative' : '' %>">
+            <%= p.edge_p2 ? p.edge_p2 + '%' : '—' %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } else { %>
+<div class="empty-state">
+  <p>No predictions available for <%= date %>. Odds data may not be loaded for this date.</p>
+</div>
+<% } %>
+
+<%- include('partials/footer') %>

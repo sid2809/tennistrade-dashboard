@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Players — TennisTrade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head><body>
+<%- include('partials/header', { page: 'players' }) %>
+<main class="content">
+  <div class="page-header"><h1>Player Lookup</h1></div>
+  <form class="search-form" method="GET" action="/players">
+    <input type="text" name="q" placeholder="Search player name..." value="<%= q %>" class="search-input" autofocus>
+    <button type="submit" class="btn">Search</button>
+  </form>
+  <% if (player) { %>
+  <div class="player-card">
+    <div class="player-name"><%= player.name %></div>
+    <% if (player.elo) { %>
+    <div class="elo-row">
+      <span class="elo-badge">Elo <%= Number(player.elo.elo_overall).toFixed(0) %></span>
+      <span class="elo-surface">Hard <%= Number(player.elo.elo_hard||0).toFixed(0) %></span>
+      <span class="elo-surface">Clay <%= Number(player.elo.elo_clay||0).toFixed(0) %></span>
+      <span class="elo-surface">Grass <%= Number(player.elo.elo_grass||0).toFixed(0) %></span>
+    </div>
+    <% } %>
+    <div class="surface-stats">
+      <% allSurfaces.forEach(s => { %>
+      <div class="surface-card">
+        <div class="surface-label"><%= s.surface %></div>
+        <div class="surface-stat"><span class="sl">Matches</span><span class="sv"><%= s.matches_total %> (<%= s.matches_won %>W)</span></div>
+        <div class="surface-stat"><span class="sl">52w matches</span><span class="sv"><%= s.matches_last52w %></span></div>
+        <% if (s.serve_hold_pct) { %><div class="surface-stat"><span class="sl">Serve Hold</span><span class="sv"><%= (s.serve_hold_pct*100).toFixed(1) %>%</span></div><% } %>
+        <% if (s.break_rate) { %><div class="surface-stat"><span class="sl">Break Rate</span><span class="sv"><%= (s.break_rate*100).toFixed(1) %>%</span></div><% } %>
+        <% if (s.bp_saved_pct) { %><div class="surface-stat"><span class="sl">BP Saved</span><span class="sv"><%= (s.bp_saved_pct*100).toFixed(1) %>%</span></div><% } %>
+        <% if (s.aces_per_match) { %><div class="surface-stat"><span class="sl">Aces/match</span><span class="sv"><%= Number(s.aces_per_match).toFixed(1) %></span></div><% } %>
+        <% if (s.df_per_match) { %><div class="surface-stat"><span class="sl">DFs/match</span><span class="sv"><%= Number(s.df_per_match).toFixed(1) %></span></div><% } %>
+        <% if (s.serve_dominance!=null) { %><div class="surface-stat"><span class="sl">Dominance</span><span class="sv <%= s.serve_dominance>=0?'positive':'negative' %>"><%= (s.serve_dominance*100).toFixed(1) %>%</span></div><% } %>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+  <% } else if (q) { %>
+  <div class="empty-state"><p>No player found for "<%= q %>"</p></div>
+  <% } %>
+  <div class="section"><h2>Most Active Players (52 weeks)</h2>
+  <div class="table-wrap"><table><thead><tr><th>Player</th><th>Total</th><th>Won</th><th>52w</th><th>Hold%</th><th>Break%</th><th>Dom</th></tr></thead><tbody>
+  <% topPlayers.forEach(p => { %>
+  <tr class="clickable-row" onclick="location.href='/players?q=<%= encodeURIComponent(p.player_name) %>'">
+    <td><strong><%= p.player_name %></strong></td>
+    <td><%= p.matches_total %></td><td><%= p.matches_won %></td><td><%= p.matches_last52w %></td>
+    <td class="mono"><%= p.serve_hold_pct?(p.serve_hold_pct*100).toFixed(1)+'%':'—' %></td>
+    <td class="mono"><%= p.break_rate?(p.break_rate*100).toFixed(1)+'%':'—' %></td>
+    <td class="mono <%= (p.serve_dominance||0)>=0?'positive':'negative' %>"><%= p.serve_dominance?(p.serve_dominance*100).toFixed(1)+'%':'—' %></td>
+  </tr><% }) %>
+  </tbody></table></div></div>
+</main></body></html>

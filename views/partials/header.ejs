@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TennisTrade<%= typeof pageTitle !== 'undefined' ? ' — ' + pageTitle : '' %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-brand">
+      <span class="nav-icon">🎾</span>
+      <span class="nav-title">TennisTrade</span>
+    </div>
+    <div class="nav-links">
+      <a href="/" class="nav-link <%= page === 'home' ? 'active' : '' %>">Overview</a>
+      <a href="/trades" class="nav-link <%= page === 'trades' ? 'active' : '' %>">Trades</a>
+      <a href="/players" class="nav-link <%= page === 'players' ? 'active' : '' %>">Players</a>
+      <a href="/predictions" class="nav-link <%= page === 'predictions' ? 'active' : '' %>">Predictions</a>
+      <a href="/radar" class="nav-link <%= page === 'radar' ? 'active' : '' %>">Radar</a>
+    </div>
+  </nav>
+  <main class="main">

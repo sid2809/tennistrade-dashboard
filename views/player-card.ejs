@@ -1,0 +1,116 @@
+<%- include('partials/header', { page: 'players', pageTitle: player ? player.overall.player_name : 'Player' }) %>
+
+<% if (player) { %>
+<div class="page-header">
+  <a href="/players" class="back-link">← Players</a>
+  <h1><%= player.overall.player_name || player.bio.first_name + ' ' + player.bio.last_name %></h1>
+</div>
+
+<!-- Bio -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-label">Elo Rating</div>
+    <div class="stat-value big"><%= player.elo.elo_overall ? Math.round(player.elo.elo_overall) : '—' %></div>
+    <div class="stat-sub">Overall</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Record</div>
+    <div class="stat-value big"><%= player.overall.matches_won || 0 %>-<%= (player.overall.matches_total || 0) - (player.overall.matches_won || 0) %></div>
+    <div class="stat-sub"><%= player.overall.matches_total || 0 %> matches · <%= player.overall.matches_last52w || 0 %> in 52w</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Hand / Country</div>
+    <div class="stat-value"><%= player.bio.hand || '—' %> / <%= player.bio.country || '—' %></div>
+    <div class="stat-sub">Height: <%= player.bio.height_cm ? player.bio.height_cm + 'cm' : '—' %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Serve Dominance</div>
+    <div class="stat-value big <%= (player.overall.serve_dominance || 0) > 0 ? 'positive' : 'negative' %>">
+      <%= player.overall.serve_dominance ? (player.overall.serve_dominance * 100).toFixed(1) + '%' : '—' %>
+    </div>
+    <div class="stat-sub">Hold% − Break%</div>
+  </div>
+</div>
+
+<!-- Surface stats -->
+<div class="section">
+  <h2>Stats by Surface</h2>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Surface</th>
+          <th>Elo</th>
+          <th>Matches</th>
+          <th>52w</th>
+          <th>Hold%</th>
+          <th>Hold% 52w</th>
+          <th>Break%</th>
+          <th>Break% 52w</th>
+          <th>1st Serve%</th>
+          <th>Aces/M</th>
+          <th>DF/M</th>
+          <th>BP Saved%</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% ['overall', 'hard', 'clay', 'grass'].forEach(surface => { 
+          const s = player[surface];
+          if (!s || !s.matches_total) return;
+          const eloKey = surface === 'overall' ? 'elo_overall' : 'elo_' + surface;
+        %>
+        <tr>
+          <td><span class="surface-tag surface-<%= surface %>"><%= surface.charAt(0).toUpperCase() + surface.slice(1) %></span></td>
+          <td class="mono"><%= player.elo[eloKey] ? Math.round(player.elo[eloKey]) : '—' %></td>
+          <td class="mono"><%= s.matches_total %></td>
+          <td class="mono"><%= s.matches_last52w || 0 %></td>
+          <td class="mono"><%= s.serve_hold_pct ? (s.serve_hold_pct * 100).toFixed(1) + '%' : '—' %></td>
+          <td class="mono"><%= s.serve_hold_pct_52w ? (s.serve_hold_pct_52w * 100).toFixed(1) + '%' : '—' %></td>
+          <td class="mono"><%= s.break_rate ? (s.break_rate * 100).toFixed(1) + '%' : '—' %></td>
+          <td class="mono"><%= s.break_rate_52w ? (s.break_rate_52w * 100).toFixed(1) + '%' : '—' %></td>
+          <td class="mono"><%= s.first_serve_pct ? (s.first_serve_pct * 100).toFixed(1) + '%' : '—' %></td>
+          <td class="mono"><%= s.aces_per_match ? parseFloat(s.aces_per_match).toFixed(1) : '—' %></td>
+          <td class="mono"><%= s.df_per_match ? parseFloat(s.df_per_match).toFixed(1) : '—' %></td>
+          <td class="mono"><%= s.bp_saved_pct ? (s.bp_saved_pct * 100).toFixed(1) + '%' : '—' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Recent matches -->
+<% if (matches && matches.length > 0) { %>
+<div class="section">
+  <h2>Recent Matches</h2>
+  <div class="table-wrap">
+    <table class="table compact">
+      <thead>
+        <tr><th>Date</th><th>Result</th><th>Opponent</th><th>Score</th><th>Surface</th><th>Tournament</th><th>Round</th></tr>
+      </thead>
+      <tbody>
+        <% matches.forEach(m => { %>
+        <tr>
+          <td class="mono small"><%= m.tourney_date %></td>
+          <td><span class="badge <%= m.won ? 'badge-win' : 'badge-loss' %>"><%= m.won ? 'W' : 'L' %></span></td>
+          <td><%= m.won ? m.loser_name : m.winner_name %></td>
+          <td class="mono"><%= m.score || '—' %></td>
+          <td><span class="surface-tag surface-<%= (m.surface || '').toLowerCase() %>"><%= m.surface || '—' %></span></td>
+          <td><%= m.tourney_name %></td>
+          <td><%= m.round || '—' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<% } else { %>
+<div class="empty-state">
+  <p>Player not found.</p>
+  <a href="/players" class="btn">← Back to search</a>
+</div>
+<% } %>
+
+<%- include('partials/footer') %>
