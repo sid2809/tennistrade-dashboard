@@ -61,7 +61,8 @@ async function getLivePredictions(db, date) {
     for (const o of oddsData) oddsMap[o.event_key] = o;
     const singles = events.filter(e => {
       const t = (e.type || '').toLowerCase();
-      return t.includes('single') && !t.includes('double');
+      const tour = (e.tour || '');
+      return t.includes('single') && !t.includes('double') && !tour.includes('ITF');
     });
     const enriched = [];
     for (const match of singles) {
