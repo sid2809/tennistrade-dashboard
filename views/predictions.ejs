@@ -193,7 +193,7 @@
         <tbody>
           <% group.matches.forEach(m => { %>
           <tr>
-            <td class="mono small"><%= m.time || '—' %></td>
+            <td class="mono small"><%= m.time_ist || m.time || '—' %></td>
             <td><%= m.round || '—' %></td>
             <td class="player-name"><%= m.player1 %></td>
             <td class="mono"><%= m.p1_elo %></td>

@@ -152,7 +152,6 @@ async function getTodaysSchedule(db, date, req) {
   return Object.values(grouped).sort((a, b) => (tourOrder[a.tour] || 5) - (tourOrder[b.tour] || 5));
 }
 
-module.exports = { getLivePredictions, getValueBets, getTradeableMatches, getTodaysSchedule };
 
 // Synchronous versions that take pre-fetched predictions list
 function getValueBetsFromList(all) {
