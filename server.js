@@ -13,6 +13,7 @@ app.set('views', path.join(__dirname, 'views'));
 // ── Static assets ──
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ── Make db pool available to routes ──
 app.locals.pool = pool;
