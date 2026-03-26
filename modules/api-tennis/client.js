@@ -4,6 +4,15 @@ const http = require('http');
 const API_KEY = process.env.API_TENNIS_KEY || '';
 const BASE_URL = 'https://api.api-tennis.com/tennis/';
 
+// Cache API responses for 30 minutes
+const _cache = {};
+function getCached(key) {
+  const c = _cache[key];
+  if (c && Date.now() - c.ts < 30 * 60 * 1000) return c.data;
+  return null;
+}
+function setCache(key, data) { _cache[key] = { data, ts: Date.now() }; }
+
 function fetch(params) {
   return new Promise((resolve, reject) => {
     const qs = new URLSearchParams({ APIkey: API_KEY, ...params }).toString();
@@ -27,6 +36,9 @@ function fetch(params) {
 // Get today's pre-match odds from multiple bookmakers
 async function getTodaysOdds(date) {
   const dateStr = date || new Date().toISOString().slice(0, 10);
+  const cacheKey = 'odds_' + dateStr;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetch({
     method: 'get_odds',
     date_start: dateStr,
@@ -78,12 +90,16 @@ async function getTodaysOdds(date) {
     }
   }
 
+  setCache(cacheKey, matches);
   return matches;
 }
 
 // Get today's scheduled events (matches) with player names
 async function getTodaysEvents(date) {
   const dateStr = date || new Date().toISOString().slice(0, 10);
+  const cacheKey = 'events_' + dateStr;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetch({
     method: 'get_fixtures',
     date_start: dateStr,
@@ -97,7 +113,7 @@ async function getTodaysEvents(date) {
     events = Object.values(events);
   }
 
-  return events.map(e => ({
+  const result = events.map(e => ({
     event_key: String(e.event_key || ''),
     player1: e.event_first_player || '',
     player2: e.event_second_player || '',
@@ -110,6 +126,8 @@ async function getTodaysEvents(date) {
     surface: detectSurface(e.tournament_name || ''),
     tour: detectTour(e.event_type_type || ''),
   }));
+  setCache(cacheKey, result);
+  return result;
 }
 
 // Get live matches
