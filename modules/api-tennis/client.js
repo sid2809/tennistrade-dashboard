@@ -85,7 +85,7 @@ async function getTodaysOdds(date) {
 async function getTodaysEvents(date) {
   const dateStr = date || new Date().toISOString().slice(0, 10);
   const data = await fetch({
-    method: 'get_events',
+    method: 'get_fixtures',
     date_start: dateStr,
     date_stop: dateStr,
   });
@@ -101,13 +101,13 @@ async function getTodaysEvents(date) {
     event_key: String(e.event_key || ''),
     player1: e.event_first_player || '',
     player2: e.event_second_player || '',
-    tournament: e.event_tournament || e.tournament_name || e.league_name || '',
+    tournament: e.tournament_name || '',
     round: e.tournament_round || e.event_round || '',
     time: e.event_time || '',
     date: e.event_date || dateStr,
     type: e.event_type_type || '',
     status: e.event_status || 'Not started',
-    surface: detectSurface(e.event_tournament || e.tournament_name || ''),
+    surface: detectSurface(e.tournament_name || ''),
     tour: detectTour(e.event_type_type || ''),
   }));
 }
