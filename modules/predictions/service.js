@@ -16,7 +16,7 @@ async function getLivePredictions(db, date, req) {
 
     const singles = events.filter(e => {
       const t = (e.type || '').toLowerCase();
-      return t.includes('single') && !t.includes('double');
+      return t.includes('single') && !t.includes('double') && !e.tour.includes('ITF');
     });
 
     // Build name->match map for all players
