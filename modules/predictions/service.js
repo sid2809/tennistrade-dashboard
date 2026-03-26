@@ -98,6 +98,12 @@ async function getLivePredictions(db, date) {
       });
     }
     const tourOrder = { 'ATP': 0, 'WTA': 1, 'Challenger': 2, 'WTA-ITF': 3, 'ATP-ITF': 4, 'Other': 5 };
+    // Drop unrated players (1500 default or name miss)
+    const rated = enriched.filter(m =>
+      m.p1_name_conf !== 'miss' && m.p2_name_conf !== 'miss' &&
+      m.p1_elo !== 1500 && m.p2_elo !== 1500
+    );
+
     rated.sort((a, b) => {
       if (a.has_odds !== b.has_odds) return a.has_odds ? -1 : 1;
       return (tourOrder[a.tour] || 5) - (tourOrder[b.tour] || 5);
