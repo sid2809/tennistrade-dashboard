@@ -63,10 +63,45 @@ async function getLivePredictions(db, date) {
       const t = (e.type || '').toLowerCase();
       return t.includes('single') && !t.includes('double');
     });
+    // Batch lookup all player IDs at once
+    const allNames = [...new Set(singles.flatMap(m => [m.player1, m.player2]))];
+    const statsMap = {};
+    const idList = allNames.map(n => {
+      const m = findPlayerByName(n, nameIndex);
+      return m ? m.row.player_id : null;
+    }).filter(Boolean);
+
+    if (idList.length > 0) {
+      const placeholders = idList.map((_, i) => `${i+1}`).join(',');
+      const r = await db.query(`
+        SELECT s.*, e.elo_overall, e.elo_hard, e.elo_clay, e.elo_grass
+        FROM tennis_player_stats s
+        JOIN tennis_elo_current e ON e.player_id = s.player_id
+        WHERE s.player_id IN (${placeholders}) AND s.surface = 'Overall'
+      `, idList);
+      for (const row of r.rows) statsMap[row.player_id] = row;
+    }
+
+    // For players with Elo but no stats, add Elo-only entries
+    for (const name of allNames) {
+      const m = findPlayerByName(name, nameIndex);
+      if (m && !statsMap[m.row.player_id]) {
+        statsMap[m.row.player_id] = { ...m.row, name_confidence: m.confidence };
+      }
+    }
+
+    const getStats = (name) => {
+      const m = findPlayerByName(name, nameIndex);
+      if (!m) return null;
+      const s = statsMap[m.row.player_id];
+      if (!s) return null;
+      return { ...s, name_confidence: m.confidence };
+    };
+
     const enriched = [];
     for (const match of singles) {
-      const p1Stats = await lookupPlayerStats(db, match.player1, nameIndex);
-      const p2Stats = await lookupPlayerStats(db, match.player2, nameIndex);
+      const p1Stats = getStats(match.player1);
+      const p2Stats = getStats(match.player2);
       const p1Elo = p1Stats?.elo_overall || 1500;
       const p2Elo = p2Stats?.elo_overall || 1500;
       const eloProbP1 = 1 / (1 + Math.pow(10, (p2Elo - p1Elo) / 400));
