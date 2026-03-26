@@ -163,3 +163,8 @@ body { font-family:var(--font-body); background:var(--bg-primary); color:var(--t
   .card-grid { grid-template-columns:1fr; }
   .info-grid { grid-template-columns:1fr; }
 }
+
+/* Schedule groups */
+.schedule-group { margin-bottom: 24px; }
+.schedule-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 8px 0; }
+.schedule-tournament { font-weight: 500; font-size: 14px; }

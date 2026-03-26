@@ -2,13 +2,50 @@
 
 <div class="page-header">
   <h1>Predictions & Suggested Trades</h1>
-  <span class="mono muted"><%= date %></span>
+  <div>
+    <span class="badge badge-live">LIVE</span>
+    <span class="mono muted" style="margin-left:8px"><%= date %></span>
+  </div>
+</div>
+
+<!-- Stats bar -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-label">Matches today</div>
+    <div class="stat-value big"><%= stats.total %></div>
+    <div class="stat-sub"><%= stats.atp_wta %> ATP/WTA singles</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">With odds</div>
+    <div class="stat-value big"><%= stats.with_odds %></div>
+    <div class="stat-sub">pre-match bookmaker odds</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Value bets</div>
+    <div class="stat-value big positive"><%= stats.value_bets %></div>
+    <div class="stat-sub">15%+ edge over bookmaker</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Tradeable</div>
+    <div class="stat-value big"><%= stats.tradeable %></div>
+    <div class="stat-sub">T1/T3/T4/T6 potential</div>
+  </div>
+</div>
+
+<!-- Date picker -->
+<div class="filters">
+  <% const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10); %>
+  <% const today = new Date().toISOString().slice(0,10); %>
+  <% const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0,10); %>
+  <a href="/predictions?date=<%= yesterday %>" class="filter-btn <%= date === yesterday ? 'active' : '' %>">Yesterday</a>
+  <a href="/predictions?date=<%= today %>" class="filter-btn <%= date === today ? 'active' : '' %>">Today</a>
+  <a href="/predictions?date=<%= tomorrow %>" class="filter-btn <%= date === tomorrow ? 'active' : '' %>">Tomorrow</a>
 </div>
 
 <% if (valueBets && valueBets.length > 0) { %>
 <div class="section">
   <div class="section-header">
-    <h2>🎯 Value Bets (15%+ Edge)</h2>
+    <h2>Value Bets (15%+ Edge)</h2>
     <span class="badge badge-live"><%= valueBets.length %> found</span>
   </div>
   <div class="card-grid">
@@ -37,16 +74,20 @@
           <span class="highlight"><%= v.bet_on %></span>
         </div>
         <div class="detail-row">
-          <span>Model prob</span>
+          <span>Model probability</span>
           <span class="mono"><%= v.elo_prob %>%</span>
         </div>
         <div class="detail-row">
-          <span>Best odds</span>
+          <span>Bookmaker odds</span>
           <span class="mono"><%= v.bet_odds ? parseFloat(v.bet_odds).toFixed(2) : '—' %></span>
         </div>
         <div class="detail-row">
-          <span>Stake</span>
+          <span>Suggested stake</span>
           <span class="mono"><%= v.stake_pct %></span>
+        </div>
+        <div class="detail-row">
+          <span>Tour</span>
+          <span><%= v.tour %></span>
         </div>
       </div>
     </div>
@@ -58,8 +99,8 @@
 <% if (tradeable && tradeable.length > 0) { %>
 <div class="section">
   <div class="section-header">
-    <h2>⚡ Tradeable Matches</h2>
-    <span class="muted">Matches with T1/T3/T4 potential</span>
+    <h2>Tradeable Matches</h2>
+    <span class="muted">Matches with T1/T3/T4/T6 potential</span>
   </div>
   <div class="card-grid">
     <% tradeable.forEach(t => { %>
@@ -88,23 +129,29 @@
           <span>Favorite</span>
           <span class="highlight"><%= t.favorite %></span>
         </div>
+        <% if (t.odds_p1 && t.odds_p2) { %>
+        <div class="detail-row">
+          <span>Odds</span>
+          <span class="mono"><%= parseFloat(t.odds_p1).toFixed(2) %> / <%= parseFloat(t.odds_p2).toFixed(2) %></span>
+        </div>
+        <% } %>
         <% if (t.p1_stats) { %>
         <div class="detail-row">
-          <span><%= t.player1 %> hold/brk</span>
-          <span class="mono"><%= t.p1_stats.serve_hold_pct ? (t.p1_stats.serve_hold_pct * 100).toFixed(0) : '—' %>% / <%= t.p1_stats.break_rate ? (t.p1_stats.break_rate * 100).toFixed(0) : '—' %>%</span>
+          <span><%= t.player1 %></span>
+          <span class="mono">Hold <%= t.p1_stats.serve_hold_pct ? (t.p1_stats.serve_hold_pct * 100).toFixed(0) : '—' %>% / Break <%= t.p1_stats.break_rate ? (t.p1_stats.break_rate * 100).toFixed(0) : '—' %>%</span>
         </div>
         <% } %>
         <% if (t.p2_stats) { %>
         <div class="detail-row">
-          <span><%= t.player2 %> hold/brk</span>
-          <span class="mono"><%= t.p2_stats.serve_hold_pct ? (t.p2_stats.serve_hold_pct * 100).toFixed(0) : '—' %>% / <%= t.p2_stats.break_rate ? (t.p2_stats.break_rate * 100).toFixed(0) : '—' %>%</span>
+          <span><%= t.player2 %></span>
+          <span class="mono">Hold <%= t.p2_stats.serve_hold_pct ? (t.p2_stats.serve_hold_pct * 100).toFixed(0) : '—' %>% / Break <%= t.p2_stats.break_rate ? (t.p2_stats.break_rate * 100).toFixed(0) : '—' %>%</span>
         </div>
         <% } %>
         <% t.strategies.forEach(s => { %>
         <div class="strategy-note">
           <span class="badge badge-<%= s.type.toLowerCase() %> small"><%= s.type %></span>
           <span><%= s.desc %></span>
-          <span class="badge badge-conf-<%= s.confidence.toLowerCase().replace('-','') %>"><%= s.confidence %></span>
+          <span class="badge badge-conf-<%= s.confidence.toLowerCase().replace(/[- ]/g,'') %>"><%= s.confidence %></span>
         </div>
         <% }) %>
       </div>
@@ -114,60 +161,77 @@
 </div>
 <% } %>
 
-<% if (predictions && predictions.length > 0) { %>
+<% if (schedule && schedule.length > 0) { %>
 <div class="section">
   <div class="section-header">
-    <h2>📋 All Matches (<%= date %>)</h2>
-    <span class="mono muted"><%= predictions.length %> matches</span>
+    <h2>Full Schedule (<%= date %>)</h2>
+    <span class="mono muted"><%= stats.total %> singles matches</span>
   </div>
-  <div class="table-wrap">
-    <table class="table compact">
-      <thead>
-        <tr>
-          <th>Tour</th>
-          <th>Tournament</th>
-          <th>Surface</th>
-          <th>Round</th>
-          <th>Player 1</th>
-          <th>Elo</th>
-          <th>Player 2</th>
-          <th>Elo</th>
-          <th>Model P1</th>
-          <th>Odds P1</th>
-          <th>Edge P1</th>
-          <th>Odds P2</th>
-          <th>Edge P2</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% predictions.forEach(p => { %>
-        <tr>
-          <td><%= p.tour %></td>
-          <td><%= p.tournament %></td>
-          <td><span class="surface-tag surface-<%= (p.surface || '').toLowerCase() %>"><%= p.surface %></span></td>
-          <td><%= p.round %></td>
-          <td class="player-name"><%= p.player1 %></td>
-          <td class="mono"><%= p.p1_elo %></td>
-          <td class="player-name"><%= p.player2 %></td>
-          <td class="mono"><%= p.p2_elo %></td>
-          <td class="mono"><%= p.elo_prob_p1 %>%</td>
-          <td class="mono"><%= p.odds_p1 ? parseFloat(p.odds_p1).toFixed(2) : '—' %></td>
-          <td class="mono <%= parseFloat(p.edge_p1) > 10 ? 'positive' : parseFloat(p.edge_p1) < -5 ? 'negative' : '' %>">
-            <%= p.edge_p1 ? p.edge_p1 + '%' : '—' %>
-          </td>
-          <td class="mono"><%= p.odds_p2 ? parseFloat(p.odds_p2).toFixed(2) : '—' %></td>
-          <td class="mono <%= parseFloat(p.edge_p2) > 10 ? 'positive' : parseFloat(p.edge_p2) < -5 ? 'negative' : '' %>">
-            <%= p.edge_p2 ? p.edge_p2 + '%' : '—' %>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
+  <% schedule.forEach(group => { %>
+  <div class="schedule-group">
+    <div class="schedule-header">
+      <span class="badge badge-<%= group.tour === 'ATP' ? 'back' : group.tour === 'WTA' ? 'lay' : 'closed' %>"><%= group.tour %></span>
+      <span class="schedule-tournament"><%= group.tournament %></span>
+      <span class="surface-tag surface-<%= (group.surface || '').toLowerCase() %>"><%= group.surface %></span>
+    </div>
+    <div class="table-wrap">
+      <table class="table compact">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Round</th>
+            <th>Player 1</th>
+            <th>Elo</th>
+            <th>Player 2</th>
+            <th>Elo</th>
+            <th>Model</th>
+            <th>Odds</th>
+            <th>Edge</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% group.matches.forEach(m => { %>
+          <tr>
+            <td class="mono small"><%= m.time || '—' %></td>
+            <td><%= m.round || '—' %></td>
+            <td class="player-name"><%= m.player1 %></td>
+            <td class="mono"><%= m.p1_elo %></td>
+            <td class="player-name"><%= m.player2 %></td>
+            <td class="mono"><%= m.p2_elo %></td>
+            <td class="mono"><%= m.elo_prob_p1 %>%</td>
+            <td class="mono">
+              <% if (m.odds_p1) { %>
+                <%= parseFloat(m.odds_p1).toFixed(2) %> / <%= parseFloat(m.odds_p2).toFixed(2) %>
+              <% } else { %>
+                —
+              <% } %>
+            </td>
+            <td class="mono">
+              <% const bestEdge = Math.max(parseFloat(m.edge_p1)||0, parseFloat(m.edge_p2)||0); %>
+              <% if (bestEdge > 15) { %>
+                <span class="positive">+<%= bestEdge.toFixed(0) %>%</span>
+              <% } else if (bestEdge > 5) { %>
+                +<%= bestEdge.toFixed(0) %>%
+              <% } else if (m.has_odds) { %>
+                <%= bestEdge.toFixed(0) %>%
+              <% } else { %>
+                —
+              <% } %>
+            </td>
+            <td><%= m.status %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
   </div>
+  <% }) %>
 </div>
-<% } else { %>
+<% } else if (!predictions || predictions.length === 0) { %>
 <div class="empty-state">
-  <p>No predictions available for <%= date %>. Odds data may not be loaded for this date.</p>
+  <p>No matches found for <%= date %>.</p>
+  <p class="muted">Try checking tomorrow's schedule or verify the API-Tennis key is configured.</p>
 </div>
 <% } %>
 
