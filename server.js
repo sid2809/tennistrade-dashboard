@@ -1,4 +1,5 @@
 const express = require('express');
+const { buildNameIndex } = require('./config/nameMatch');
 const path = require('path');
 const pool = require('./config/db');
 
@@ -19,6 +20,30 @@ app.use((req, res, next) => {
   req.db = pool;
   next();
 });
+
+// ── Preload name index and stats at startup ──
+async function preloadCache() {
+  try {
+    const [playerRows, statsRows] = await Promise.all([
+      pool.query(
+        "SELECT p.player_id, (p.first_name || ' ' || p.last_name) AS player_name, " +
+        "e.elo_overall, e.elo_hard, e.elo_clay, e.elo_grass " +
+        "FROM tennis_players p JOIN tennis_elo_current e ON e.player_id = p.player_id " +
+        "WHERE e.elo_overall IS NOT NULL"
+      ),
+      pool.query("SELECT player_id, serve_hold_pct, break_rate FROM tennis_player_stats WHERE surface = 'Overall'"),
+    ]);
+    const nameIndex = buildNameIndex(playerRows.rows);
+    const statsMap = {};
+    for (const r of statsRows.rows) statsMap[r.player_id] = r;
+    app.locals.nameIndex = nameIndex;
+    app.locals.statsMap = statsMap;
+    console.log('  ✓ Name index built (' + playerRows.rows.length + ' players)');
+    console.log('  ✓ Stats cache built (' + statsRows.rows.length + ' players)');
+  } catch (err) {
+    console.error('  Cache preload error:', err.message);
+  }
+}
 
 // ── Ensure paper_trades tables exist ──
 async function ensureTables() {
@@ -101,7 +126,7 @@ app.get('/health', async (req, res) => {
 });
 
 // ── Start server ──
-ensureTables().then(() => {
+ensureTables().then(() => preloadCache()).then(() => {
   app.listen(PORT, () => {
     console.log(`TennisTrade Dashboard running on port ${PORT}`);
     console.log(`  http://localhost:${PORT}`);

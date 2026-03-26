@@ -5,13 +5,13 @@ const service = require('./service');
 router.get('/', async (req, res) => {
   try {
     const date = req.query.date || new Date().toISOString().slice(0, 10);
-    const db = req.db || req.app.locals.pool;
+    const db = req.app.locals.pool;
 
     const [predictions, valueBets, tradeable, schedule] = await Promise.all([
-      service.getLivePredictions(db, date),
-      service.getValueBets(db, date),
-      service.getTradeableMatches(db, date),
-      service.getTodaysSchedule(db, date),
+      service.getLivePredictions(db, date, req),
+      service.getValueBets(db, date, req),
+      service.getTradeableMatches(db, date, req),
+      service.getTodaysSchedule(db, date, req),
     ]);
 
     const stats = {
@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
       page: 'predictions',
     });
   } catch (err) {
-    console.error('Predictions error:', err.message);
+    console.error('Predictions route error:', err.message);
     res.render('predictions', {
       predictions: [], valueBets: [], tradeable: [], schedule: [],
       stats: { total: 0, with_odds: 0, atp_wta: 0, value_bets: 0, tradeable: 0 },

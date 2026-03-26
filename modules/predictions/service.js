@@ -1,28 +1,12 @@
 const apiTennis = require('../api-tennis/client');
-const { buildNameIndex, findPlayerByName, formatIST } = require('../../config/nameMatch');
+const { findPlayerByName, formatIST } = require('../../config/nameMatch');
 
-let _nameIndex = null;
-let _nameIndexBuiltAt = 0;
-const NAME_INDEX_TTL_MS = 6 * 60 * 60 * 1000;
-
-async function getNameIndex(db) {
-  const now = Date.now();
-  if (_nameIndex && (now - _nameIndexBuiltAt) < NAME_INDEX_TTL_MS) return _nameIndex;
-  const { rows } = await db.query(
-    "SELECT p.player_id, (p.first_name || ' ' || p.last_name) AS player_name, " +
-    "e.elo_overall, e.elo_hard, e.elo_clay, e.elo_grass " +
-    "FROM tennis_players p " +
-    "JOIN tennis_elo_current e ON e.player_id = p.player_id " +
-    "WHERE e.elo_overall IS NOT NULL"
-  );
-  _nameIndex = buildNameIndex(rows);
-  _nameIndexBuiltAt = now;
-  return _nameIndex;
-}
-
-async function getLivePredictions(db, date) {
+async function getLivePredictions(db, date, req) {
   try {
-    const nameIndex = await getNameIndex(db);
+    const nameIndex = req && req.app.locals.nameIndex;
+    const appStatsMap = req && req.app.locals.statsMap || {};
+    if (!nameIndex) { console.error('Name index not ready'); return []; }
+
     const [events, oddsData] = await Promise.all([
       apiTennis.getTodaysEvents(date),
       apiTennis.getTodaysOdds(date),
@@ -35,42 +19,19 @@ async function getLivePredictions(db, date) {
       return t.includes('single') && !t.includes('double');
     });
 
-    // Batch lookup all players in one query
-    const allNames = [...new Set(singles.flatMap(m => [m.player1, m.player2]))];
-    const nameToId = {};
-    const idList = [];
-    for (const name of allNames) {
+    // Build name->match map for all players
+    const nameToMatch = {};
+    for (const name of [...new Set(singles.flatMap(m => [m.player1, m.player2]))]) {
       const m = findPlayerByName(name, nameIndex);
-      if (m) { nameToId[name] = m; idList.push(m.row.player_id); }
-    }
-
-    const statsMap = {};
-    if (idList.length > 0) {
-      const placeholders = idList.map((_, i) => '$' + (i + 1)).join(',');
-      const r = await db.query(
-        'SELECT s.*, e.elo_overall, e.elo_hard, e.elo_clay, e.elo_grass ' +
-        'FROM tennis_player_stats s ' +
-        'JOIN tennis_elo_current e ON e.player_id = s.player_id ' +
-        'WHERE s.player_id IN (' + placeholders + ') AND s.surface = $' + (idList.length + 1),
-        [...idList, 'Overall']
-      );
-      for (const row of r.rows) statsMap[row.player_id] = row;
-    }
-
-    // Elo-only fallback for players not in stats table
-    for (const name of allNames) {
-      const m = nameToId[name];
-      if (m && !statsMap[m.row.player_id]) {
-        statsMap[m.row.player_id] = { ...m.row, name_confidence: m.confidence };
-      }
+      if (m) nameToMatch[name] = m;
     }
 
     const getStats = (name) => {
-      const m = nameToId[name];
+      const m = nameToMatch[name];
       if (!m) return null;
-      const s = statsMap[m.row.player_id];
-      if (!s) return null;
-      return { ...s, name_confidence: m.confidence };
+      const stats = appStatsMap[m.row.player_id];
+      if (stats) return { ...m.row, ...stats, name_confidence: m.confidence };
+      return { ...m.row, name_confidence: m.confidence };
     };
 
     const enriched = [];
@@ -108,7 +69,6 @@ async function getLivePredictions(db, date) {
       });
     }
 
-    // Drop unrated players
     const rated = enriched.filter(m =>
       m.p1_name_conf !== 'miss' && m.p2_name_conf !== 'miss' &&
       m.p1_elo !== 1500 && m.p2_elo !== 1500
@@ -126,8 +86,8 @@ async function getLivePredictions(db, date) {
   }
 }
 
-async function getValueBets(db, date) {
-  const all = await getLivePredictions(db, date);
+async function getValueBets(db, date, req) {
+  const all = await getLivePredictions(db, date, req);
   return all.filter(m => {
     if (!m.has_odds) return false;
     const e1 = parseFloat(m.edge_p1) || 0;
@@ -147,8 +107,8 @@ async function getValueBets(db, date) {
   }).sort((a, b) => parseFloat(b.edge) - parseFloat(a.edge));
 }
 
-async function getTradeableMatches(db, date) {
-  const all = await getLivePredictions(db, date);
+async function getTradeableMatches(db, date, req) {
+  const all = await getLivePredictions(db, date, req);
   return all.filter(m => {
     if (!m.p1_stats && !m.p2_stats) return false;
     const p1H = m.p1_stats?.serve_hold_pct || 0;
@@ -173,15 +133,15 @@ async function getTradeableMatches(db, date) {
       const e1 = parseFloat(m.edge_p1) || 0;
       const e2 = parseFloat(m.edge_p2) || 0;
       if (e1 >= 20 || e2 >= 20)
-        strats.push({ type: 'T6', desc: 'Value bet — ' + Math.max(e1,e2).toFixed(0) + '% edge', confidence: 'High' });
+        strats.push({ type: 'T6', desc: 'Value bet — ' + Math.max(e1, e2).toFixed(0) + '% edge', confidence: 'High' });
     }
     return { ...m, strategies: strats, favorite: fav, elo_gap: eloGap };
   }).filter(m => m.strategies.length > 0)
     .sort((a, b) => b.elo_gap - a.elo_gap);
 }
 
-async function getTodaysSchedule(db, date) {
-  const events = await getLivePredictions(db, date);
+async function getTodaysSchedule(db, date, req) {
+  const events = await getLivePredictions(db, date, req);
   const grouped = {};
   for (const e of events) {
     const key = e.tour + ' — ' + e.tournament;
