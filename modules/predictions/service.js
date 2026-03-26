@@ -153,3 +153,69 @@ async function getTodaysSchedule(db, date, req) {
 }
 
 module.exports = { getLivePredictions, getValueBets, getTradeableMatches, getTodaysSchedule };
+
+// Synchronous versions that take pre-fetched predictions list
+function getValueBetsFromList(all) {
+  return all.filter(m => {
+    if (!m.has_odds) return false;
+    const e1 = parseFloat(m.edge_p1) || 0;
+    const e2 = parseFloat(m.edge_p2) || 0;
+    return e1 >= 15 || e2 >= 15;
+  }).map(m => {
+    const e1 = parseFloat(m.edge_p1) || 0;
+    const e2 = parseFloat(m.edge_p2) || 0;
+    return {
+      ...m,
+      bet_on: e1 > e2 ? m.player1 : m.player2,
+      bet_odds: e1 > e2 ? m.odds_p1 : m.odds_p2,
+      edge: Math.max(e1, e2).toFixed(1),
+      elo_prob: e1 > e2 ? m.elo_prob_p1 : m.elo_prob_p2,
+      stake_pct: Math.max(e1, e2) > 25 ? '3%' : '2%',
+    };
+  }).sort((a, b) => parseFloat(b.edge) - parseFloat(a.edge));
+}
+
+function getTradeableFromList(all) {
+  return all.filter(m => {
+    if (!m.p1_stats && !m.p2_stats) return false;
+    const p1H = m.p1_stats?.serve_hold_pct || 0;
+    const p2H = m.p2_stats?.serve_hold_pct || 0;
+    const eloGap = Math.abs(m.p1_elo - m.p2_elo);
+    const p1B = m.p1_stats?.break_rate || 0;
+    const p2B = m.p2_stats?.break_rate || 0;
+    return p1H > 0.78 || p2H > 0.78 || eloGap > 150 || p1B > 0.25 || p2B > 0.25;
+  }).map(m => {
+    const strats = [];
+    const eloGap = Math.abs(m.p1_elo - m.p2_elo);
+    const fav = m.p1_elo > m.p2_elo ? m.player1 : m.player2;
+    const favS = m.p1_elo > m.p2_elo ? m.p1_stats : m.p2_stats;
+    const udS = m.p1_elo > m.p2_elo ? m.p2_stats : m.p1_stats;
+    if (eloGap > 150 && udS && (udS.break_rate || 0) > 0.2)
+      strats.push({ type: 'T1', desc: 'Back after break — wait for break-back', confidence: eloGap > 250 ? 'High' : 'Medium' });
+    if (favS && (favS.serve_hold_pct || 0) < 0.80)
+      strats.push({ type: 'T3', desc: 'Serving for set — break probability elevated', confidence: 'Medium' });
+    if (eloGap > 200)
+      strats.push({ type: 'T4', desc: 'Lay at 1.02-1.08 after double break', confidence: 'Low-Med' });
+    if (m.has_odds) {
+      const e1 = parseFloat(m.edge_p1) || 0;
+      const e2 = parseFloat(m.edge_p2) || 0;
+      if (e1 >= 20 || e2 >= 20)
+        strats.push({ type: 'T6', desc: 'Value bet — ' + Math.max(e1, e2).toFixed(0) + '% edge', confidence: 'High' });
+    }
+    return { ...m, strategies: strats, favorite: fav, elo_gap: eloGap };
+  }).filter(m => m.strategies.length > 0)
+    .sort((a, b) => b.elo_gap - a.elo_gap);
+}
+
+function getScheduleFromList(events) {
+  const grouped = {};
+  for (const e of events) {
+    const key = e.tour + ' — ' + e.tournament;
+    if (!grouped[key]) grouped[key] = { tour: e.tour, tournament: e.tournament, surface: e.surface, matches: [] };
+    grouped[key].matches.push(e);
+  }
+  const tourOrder = { 'ATP': 0, 'WTA': 1, 'Challenger': 2, 'WTA-ITF': 3, 'ATP-ITF': 4, 'Other': 5 };
+  return Object.values(grouped).sort((a, b) => (tourOrder[a.tour] || 5) - (tourOrder[b.tour] || 5));
+}
+
+module.exports = { getLivePredictions, getValueBets, getTradeableMatches, getTodaysSchedule, getValueBetsFromList, getTradeableFromList, getScheduleFromList };
