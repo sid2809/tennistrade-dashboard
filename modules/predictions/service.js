@@ -9,7 +9,7 @@ async function getNameIndex(db) {
   const now = Date.now();
   if (_nameIndex && (now - _nameIndexBuiltAt) < NAME_INDEX_TTL_MS) return _nameIndex;
   const { rows } = await db.query(`
-    SELECT p.player_id, p.player_name,
+    SELECT p.player_id, (p.first_name || ' ' || p.last_name) AS player_name,
            e.elo_overall, e.elo_hard, e.elo_clay, e.elo_grass
     FROM tennis_players p
     JOIN tennis_elo_current e ON e.player_id = p.player_id
