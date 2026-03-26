@@ -40,6 +40,34 @@
     <div class="strat-row"><span class="badge badge-<%= s.strategy %>"><%= s.strategy %></span><span class="strat-count"><%= s.n %> trades</span><span class="strat-wr"><%= s.n>0?(s.wins/s.n*100).toFixed(0):0 %>%</span><span class="mono <%= s.pnl>=0?'positive':'negative' %>">₹<%= Number(s.pnl).toLocaleString('en-IN',{maximumFractionDigits:0}) %></span></div>
   <% }) %></div><% } %>
   <% if (dailyPnl.length>0) { %><div class="section"><h2>Cumulative P&L</h2><canvas id="pnlChart" height="180"></canvas></div><% } %>
+  <% if (typeof openTrades !== 'undefined' && openTrades.length > 0) { %>
+  <div class="section">
+    <h2 style="margin-bottom:12px">Open Trades (<%= openTrades.length %>)</h2>
+    <div class="table-wrap"><table><thead><tr>
+      <th>Match</th><th>Bet On</th><th>Odds</th><th>Stake</th><th>Edge</th><th>Logged</th><th>Result</th>
+    </tr></thead><tbody>
+    <% openTrades.forEach(t => { %>
+    <tr>
+      <td><%= t.player1 %> v <%= t.player2 %><br><span class="dim" style="font-size:11px"><%= t.tournament %></span></td>
+      <td class="highlight"><%= t.entry_player %></td>
+      <td class="mono"><%= Number(t.entry_odds).toFixed(2) %></td>
+      <td class="mono">₹<%= Number(t.entry_stake).toLocaleString('en-IN') %></td>
+      <td class="mono positive">+<%= Number(t.confidence).toFixed(1) %>%</td>
+      <td class="dim" style="font-size:11px"><%= new Date(t.entry_time).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) %></td>
+      <td>
+        <form action="/trades/<%= t.trade_id %>/close" method="POST" style="display:flex;gap:6px">
+          <button name="result" value="win" style="padding:4px 10px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);border-radius:4px;color:#22c55e;font-size:11px;font-weight:600;cursor:pointer">Won</button>
+          <button name="result" value="loss" style="padding:4px 10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:4px;color:#ef4444;font-size:11px;font-weight:600;cursor:pointer">Lost</button>
+        </form>
+      </td>
+    </tr>
+    <% }) %>
+    </tbody></table></div>
+  </div>
+  <% } %>
+  <% if (typeof openTrades !== 'undefined' && openTrades.length === 0 && !trades.length) { %>
+  <div style="text-align:center;padding:48px;color:var(--text-muted)">No trades yet — log a value bet from the Predictions page.</div>
+  <% } %>
   <div class="section"><div class="table-wrap"><table><thead><tr><th>Strat</th><th>Match</th><th>Surf</th><th>Side</th><th>In</th><th>Out</th><th>P&L</th><th>%</th><th>Exit</th><th>Date</th></tr></thead><tbody>
   <% if (!trades.length) { %><tr><td colspan="10" class="empty-cell">No trades match filters</td></tr><% } %>
   <% trades.forEach(t => { %><tr>

@@ -23,6 +23,11 @@ router.get('/', async (req, res) => {
 
     const orderBy = sort === 'pnl' ? 'pnl DESC' : sort === 'date_asc' ? 'exit_time ASC' : 'exit_time DESC';
 
+    const openTrades = await pool.query(
+      'SELECT * FROM paper_trades WHERE status = $1 ORDER BY entry_time DESC',
+      ['OPEN']
+    );
+
     const trades = await pool.query(
       `SELECT * FROM paper_trades WHERE ${where.join(' AND ')} ORDER BY ${orderBy} LIMIT 200`,
       params
@@ -65,6 +70,7 @@ router.get('/', async (req, res) => {
 
     res.render('trades', {
       page: 'trades',
+      openTrades: openTrades.rows,
       trades: trades.rows,
       stats: { ...stats, roi },
       byStrategy: byStrategy.rows,
@@ -75,12 +81,73 @@ router.get('/', async (req, res) => {
     console.error('Trades error:', err);
     res.render('trades', {
       page: 'trades',
+      openTrades: [],
       trades: [],
       stats: { total: 0, wins: 0, losses: 0, total_pnl: 0, roi: '0.0' },
       byStrategy: [],
       dailyPnl: [],
       filters: {},
     });
+  }
+});
+
+// Log a new paper trade from predictions page
+router.post('/log', async (req, res) => {
+  const pool = req.app.locals.pool;
+  try {
+    const { player1, player2, tournament, surface, tour, bet_on, bet_odds, edge, elo_prob, strategy, stake } = req.body;
+    const stakeNum = parseFloat(stake) || 500;
+    const oddsNum = parseFloat(bet_odds) || 0;
+    const liability = stakeNum; // for value bets, stake = liability
+    const tradeId = 'T' + Date.now();
+    const entryTime = new Date().toISOString();
+
+    await pool.query(
+      `INSERT INTO paper_trades
+        (trade_id, strategy, player1, player2, tournament, surface, tour,
+         entry_side, entry_player, entry_odds, entry_stake, entry_liability,
+         entry_time, entry_reason, status, confidence)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+      [tradeId, strategy || 'T6', player1, player2, tournament, surface, tour,
+       'BACK', bet_on, oddsNum, stakeNum, liability,
+       entryTime, 'Edge: ' + edge + '% | Model: ' + elo_prob + '%',
+       'OPEN', parseFloat(edge) || 0]
+    );
+    res.redirect('/trades?logged=' + tradeId);
+  } catch (err) {
+    console.error('Log trade error:', err.message);
+    res.redirect('/predictions?error=log_failed');
+  }
+});
+
+// Close a trade with result
+router.post('/:id/close', async (req, res) => {
+  const pool = req.app.locals.pool;
+  try {
+    const { id } = req.params;
+    const { result } = req.body; // 'win' or 'loss'
+
+    const t = await pool.query('SELECT * FROM paper_trades WHERE trade_id = $1', [id]);
+    if (!t.rows.length) return res.redirect('/trades?error=not_found');
+
+    const trade = t.rows[0];
+    const stake = parseFloat(trade.entry_stake) || 0;
+    const odds = parseFloat(trade.entry_odds) || 0;
+    const pnl = result === 'win' ? parseFloat((stake * (odds - 1)).toFixed(2)) : -stake;
+    const pnlPct = stake > 0 ? parseFloat(((pnl / stake) * 100).toFixed(1)) : 0;
+    const exitTime = new Date().toISOString();
+
+    await pool.query(
+      `UPDATE paper_trades SET
+        status = 'CLOSED', pnl = $1, pnl_pct = $2,
+        exit_time = $3, exit_reason = $4, exit_type = $5
+       WHERE trade_id = $6`,
+      [pnl, pnlPct, exitTime, result === 'win' ? 'Won' : 'Lost', result.toUpperCase(), id]
+    );
+    res.redirect('/trades');
+  } catch (err) {
+    console.error('Close trade error:', err.message);
+    res.redirect('/trades?error=close_failed');
   }
 });
 

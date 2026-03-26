@@ -90,6 +90,26 @@
           <span><%= v.tour %></span>
         </div>
       </div>
+      <form action="/trades/log" method="POST" style="margin-top:12px">
+        <input type="hidden" name="player1" value="<%= v.player1 %>">
+        <input type="hidden" name="player2" value="<%= v.player2 %>">
+        <input type="hidden" name="tournament" value="<%= v.tournament %>">
+        <input type="hidden" name="surface" value="<%= v.surface %>">
+        <input type="hidden" name="tour" value="<%= v.tour %>">
+        <input type="hidden" name="bet_on" value="<%= v.bet_on %>">
+        <input type="hidden" name="bet_odds" value="<%= v.bet_odds %>">
+        <input type="hidden" name="edge" value="<%= v.edge %>">
+        <input type="hidden" name="elo_prob" value="<%= v.elo_prob %>">
+        <input type="hidden" name="strategy" value="T6">
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="number" name="stake" placeholder="Stake ₹" min="100" step="100"
+            style="width:120px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:13px" required>
+          <button type="submit"
+            style="flex:1;padding:7px 12px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:4px;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer">
+            Log Paper Trade
+          </button>
+        </div>
+      </form>
     </div>
     <% }) %>
   </div>
