@@ -61,8 +61,7 @@ async function getLivePredictions(db, date) {
     for (const o of oddsData) oddsMap[o.event_key] = o;
     const singles = events.filter(e => {
       const t = (e.type || '').toLowerCase();
-      const tour = (e.tour || '');
-      return t.includes('single') && !t.includes('double') && !tour.includes('ITF');
+      return t.includes('single') && !t.includes('double');
     });
     const enriched = [];
     for (const match of singles) {
@@ -99,11 +98,11 @@ async function getLivePredictions(db, date) {
       });
     }
     const tourOrder = { 'ATP': 0, 'WTA': 1, 'Challenger': 2, 'WTA-ITF': 3, 'ATP-ITF': 4, 'Other': 5 };
-    enriched.sort((a, b) => {
+    rated.sort((a, b) => {
       if (a.has_odds !== b.has_odds) return a.has_odds ? -1 : 1;
       return (tourOrder[a.tour] || 5) - (tourOrder[b.tour] || 5);
     });
-    return enriched;
+    return rated;
   } catch (e) {
     console.error('Live predictions error:', e.message);
     return [];

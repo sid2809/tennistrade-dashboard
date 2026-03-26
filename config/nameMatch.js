@@ -36,6 +36,8 @@ function normalizeName(raw) {
     .trim()
     .toLowerCase()
     // Collapse multiple spaces
+    .replace(/-/g, ' ')
+    .replace(/-/g, ' ')
     .replace(/\s+/g, ' ');
 
   return s;
