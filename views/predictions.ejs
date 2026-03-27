@@ -1,9 +1,10 @@
 <%- include('partials/header', { page: 'predictions', pageTitle: 'Predictions' }) %>
 
 <% const allMatchData = []; %>
-<% const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10); %>
-<% const today     = new Date().toISOString().slice(0,10); %>
-<% const tomorrow  = new Date(Date.now() + 86400000).toISOString().slice(0,10); %>
+<% const istNow   = new Date(Date.now() + 5.5 * 60 * 60 * 1000); %>
+<% const yesterday = new Date(+istNow - 86400000).toISOString().slice(0,10); %>
+<% const today     = istNow.toISOString().slice(0,10); %>
+<% const tomorrow  = new Date(+istNow + 86400000).toISOString().slice(0,10); %>
 
 <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap">
   <div>
@@ -39,9 +40,9 @@
 <div id="valuebets" data-count="<%= stats.value_bets %>">
 <% if (valueBets && valueBets.length > 0) { %>
   <% valueBets.forEach((v, vbIdx) => { %>
-  <% allMatchData.push({player1:v.player1,player2:v.player2,tournament:v.tournament,surface:v.surface,round:v.round||"",time_ist:v.time_ist||"TBD",tour:v.tour||"",p1_elo:v.p1_elo,p2_elo:v.p2_elo,elo_prob_p1:v.elo_prob_p1,elo_prob_p2:v.elo_prob_p2,odds_p1:v.odds_p1||null,odds_p2:v.odds_p2||null,p1data:{elo_overall:v.p1_elo,elo_hard:v.p1_stats&&v.p1_stats.elo_hard||null,elo_clay:v.p1_stats&&v.p1_stats.elo_clay||null,elo_grass:v.p1_stats&&v.p1_stats.elo_grass||null,serve_hold_pct:v.p1_stats&&v.p1_stats.serve_hold_pct||null,break_rate:v.p1_stats&&v.p1_stats.break_rate||null},p2data:{elo_overall:v.p2_elo,elo_hard:v.p2_stats&&v.p2_stats.elo_hard||null,elo_clay:v.p2_stats&&v.p2_stats.elo_clay||null,elo_grass:v.p2_stats&&v.p2_stats.elo_grass||null,serve_hold_pct:v.p2_stats&&v.p2_stats.serve_hold_pct||null,break_rate:v.p2_stats&&v.p2_stats.break_rate||null},h2h:[]}); %>
+  <% allMatchData.push({player1:v.player1,player2:v.player2,tournament:v.tournament,surface:v.surface,round:v.round||"",time_ist:v.time_ist||"TBD",tour:v.tour||"",p1_elo:v.p1_elo,p2_elo:v.p2_elo,elo_prob_p1:v.model_p1_pct,elo_prob_p2:v.model_p2_pct,odds_p1:v.odds_p1||null,odds_p2:v.odds_p2||null,p1data:{elo_overall:v.p1_elo,elo_hard:v.p1_stats&&v.p1_stats.elo_hard||null,elo_clay:v.p1_stats&&v.p1_stats.elo_clay||null,elo_grass:v.p1_stats&&v.p1_stats.elo_grass||null,serve_hold_pct:v.p1_stats&&v.p1_stats.serve_hold_pct||null,break_rate:v.p1_stats&&v.p1_stats.break_rate||null},p2data:{elo_overall:v.p2_elo,elo_hard:v.p2_stats&&v.p2_stats.elo_hard||null,elo_clay:v.p2_stats&&v.p2_stats.elo_clay||null,elo_grass:v.p2_stats&&v.p2_stats.elo_grass||null,serve_hold_pct:v.p2_stats&&v.p2_stats.serve_hold_pct||null,break_rate:v.p2_stats&&v.p2_stats.break_rate||null},h2h:[]}); %>
   <%
-    const edge = parseFloat(v.edge);
+    const edge = v.bestEdge;
     const isStrong = edge >= 20;
     const cardClass = isStrong ? 'strong' : 'mid';
     const edgeClass = isStrong ? 'strong' : 'mid';
@@ -50,13 +51,13 @@
     const chosenClass = isStrong ? 'chosen-green' : 'chosen-amber';
     const dotColor = isStrong ? 'var(--green)' : 'var(--amber)';
     const probFillClass = isStrong ? 'model-g' : 'model-a';
-    const modelProb = v.bet_on === v.player1 ? v.elo_prob_p1 : v.elo_prob_p2;
-    const impliedProb = v.bet_odds ? Math.round(100/parseFloat(v.bet_odds)) : '—';
+    const modelProb = v.betOn === v.player1 ? v.model_p1_pct : v.model_p2_pct;
+    const impliedProb = v.betOdds ? Math.round(100/parseFloat(v.betOdds)) : '—';
   %>
   <div class="vbet <%= cardClass %>" onclick="openMD(<%= vbIdx %>)">
     <div class="vbet-top">
       <div class="vbet-meta">
-        <span class="edge-tag <%= edgeClass %>">+<%= v.edge %>% edge</span>
+        <span class="edge-tag <%= edgeClass %>">+<%= v.bestEdge ? v.bestEdge.toFixed(1) : "0" %>% edge</span>
         <span class="dot-sep">·</span>
         <span class="pill pill-<%= (v.tour||'').toLowerCase().includes('wta') ? 'wta' : 'ch' %>"><%= v.tour || 'Challenger' %></span>
         <span class="dot-sep">·</span>
@@ -71,14 +72,14 @@
     </div>
     <div class="vbet-body">
       <div class="matchup">
-        <% if (v.bet_on === v.player1) { %>
+        <% if (v.betOn === v.player1) { %>
         <div class="player">
           <div class="chosen-pill <%= chosenClass %>">
             <span class="chosen-dot" style="background:<%= dotColor %>"></span>
             <span class="player-name" style="color:<%= betColor %>"><%= v.player1 %></span>
           </div>
           <div class="player-elo">Elo <%= v.p1_elo %></div>
-          <div class="player-odds-main" style="color:<%= betColor %>">back @ <%= parseFloat(v.bet_odds).toFixed(2) %></div>
+          <div class="player-odds-main" style="color:<%= betColor %>">back @ <%= parseFloat(v.betOdds).toFixed(2) %></div>
         </div>
         <% } else { %>
         <div class="player">
@@ -88,14 +89,14 @@
         </div>
         <% } %>
         <div class="vs-sep">vs</div>
-        <% if (v.bet_on === v.player2) { %>
+        <% if (v.betOn === v.player2) { %>
         <div class="player right">
           <div class="chosen-pill <%= chosenClass %>" style="justify-content:flex-end">
             <span class="player-name" style="color:<%= betColor %>"><%= v.player2 %></span>
             <span class="chosen-dot" style="background:<%= dotColor %>"></span>
           </div>
           <div class="player-elo">Elo <%= v.p2_elo %></div>
-          <div class="player-odds-main" style="color:<%= betColor %>">back @ <%= parseFloat(v.bet_odds).toFixed(2) %></div>
+          <div class="player-odds-main" style="color:<%= betColor %>">back @ <%= parseFloat(v.betOdds).toFixed(2) %></div>
         </div>
         <% } else { %>
         <div class="player right">
@@ -108,8 +109,8 @@
 
       <div class="prob-bar-wrap">
         <div class="prob-bar">
-          <div class="prob-fill <%= probFillClass %>" style="width:<%= v.elo_prob_p1 %>%"><%= v.elo_prob_p1 %>%</div>
-          <div class="prob-fill book" style="width:<%= v.elo_prob_p2 %>%"><%= v.elo_prob_p2 %>%</div>
+          <div class="prob-fill <%= probFillClass %>" style="width:<%= v.model_p1_pct %>%"><%= v.model_p1_pct %>%</div>
+          <div class="prob-fill book" style="width:<%= v.model_p2_pct %>%"><%= v.model_p2_pct %>%</div>
         </div>
         <div class="prob-labels">
           <div class="prob-label" style="color:<%= betColor %>"><%= modelProb %>% model</div>
@@ -120,8 +121,8 @@
       <div class="action-strip <%= stripClass %>">
         <div class="action-icon" style="background:<%= betColor %>"></div>
         <div class="action-text">
-          <strong style="color:<%= betColor %>">Back <%= v.bet_on %> @ <%= parseFloat(v.bet_odds).toFixed(2) %></strong>
-          <span style="color:var(--text2)"> — model <%= modelProb %>%, bookie implies <%= impliedProb %>% after overround removal. Edge +<%= v.edge %>%.</span>
+          <strong style="color:<%= betColor %>">Back <%= v.betOn %> @ <%= parseFloat(v.betOdds).toFixed(2) %></strong>
+          <span style="color:var(--text2)"> — model <%= modelProb %>%, bookie implies <%= impliedProb %>% after overround removal. Edge +<%= v.bestEdge ? v.bestEdge.toFixed(1) : "0" %>%.</span>
         </div>
       </div>
 
@@ -131,8 +132,8 @@
         <input type="hidden" name="tournament" value="<%= v.tournament %>">
         <input type="hidden" name="surface" value="<%= v.surface %>">
         <input type="hidden" name="tour" value="<%= v.tour %>">
-        <input type="hidden" name="bet_on" value="<%= v.bet_on %>">
-        <input type="hidden" name="bet_odds" value="<%= v.bet_odds %>">
+        <input type="hidden" name="bet_on" value="<%= v.betOn %>">
+        <input type="hidden" name="bet_odds" value="<%= v.betOdds %>">
         <input type="hidden" name="edge" value="<%= v.edge %>">
         <input type="hidden" name="elo_prob" value="<%= modelProb %>">
         <input type="hidden" name="strategy" value="T6">
@@ -144,7 +145,7 @@
   <% }) %>
 <% } else { %>
   <div style="padding:32px;text-align:center;color:var(--text3);border:1px solid var(--border);border-radius:12px;background:var(--bg2)">
-    No value bets found for <%= date %>. Check back after odds are published.
+    <% if (typeof noData !== 'undefined' && noData) { %>No scan data for <%= date %> yet — daily scan runs at 8 AM IST.<% } else { %>No value bets found for <%= date %>. Check back after odds are published.<% } %>
   </div>
 <% } %>
 </div>
@@ -153,7 +154,7 @@
 <div id="tradeable" style="display:none" data-count="<%= stats.tradeable %>">
 <% if (tradeable && tradeable.length > 0) { %>
   <% tradeable.forEach((t, tbIdx_base) => { %>
-  <% const tbIdx = allMatchData.length; allMatchData.push({player1:t.player1,player2:t.player2,tournament:t.tournament,surface:t.surface,round:t.round||"",time_ist:t.time_ist||"TBD",tour:t.tour||"",p1_elo:t.p1_elo,p2_elo:t.p2_elo,elo_prob_p1:t.elo_prob_p1,elo_prob_p2:t.elo_prob_p2,odds_p1:t.odds_p1||null,odds_p2:t.odds_p2||null,p1data:{elo_overall:t.p1_elo,serve_hold_pct:t.p1_stats&&t.p1_stats.serve_hold_pct||null,break_rate:t.p1_stats&&t.p1_stats.break_rate||null},p2data:{elo_overall:t.p2_elo,serve_hold_pct:t.p2_stats&&t.p2_stats.serve_hold_pct||null,break_rate:t.p2_stats&&t.p2_stats.break_rate||null},h2h:[]}); %>
+  <% const tbIdx = allMatchData.length; allMatchData.push({player1:t.player1,player2:t.player2,tournament:t.tournament,surface:t.surface,round:t.round||"",time_ist:t.time_ist||"TBD",tour:t.tour||"",p1_elo:t.p1_elo,p2_elo:t.p2_elo,elo_prob_p1:t.model_p1_pct,elo_prob_p2:t.model_p2_pct,odds_p1:t.odds_p1||null,odds_p2:t.odds_p2||null,p1data:{elo_overall:t.p1_elo,serve_hold_pct:t.p1_stats&&t.p1_stats.serve_hold_pct||null,break_rate:t.p1_stats&&t.p1_stats.break_rate||null},p2data:{elo_overall:t.p2_elo,serve_hold_pct:t.p2_stats&&t.p2_stats.serve_hold_pct||null,break_rate:t.p2_stats&&t.p2_stats.break_rate||null},h2h:[]}); %>
 
   <div class="tbet" onclick="openMD(<%= tbIdx %>)">
     <div class="tbet-top">
@@ -243,7 +244,7 @@
       </tr></thead>
       <tbody>
       <% group.matches.forEach((m, mIdx) => { %>
-      <% const scIdx = allMatchData.length; allMatchData.push({player1:m.player1,player2:m.player2,tournament:m.tournament,surface:m.surface,round:m.round||"",time_ist:m.time_ist||"TBD",tour:m.tour||"",p1_elo:m.p1_elo,p2_elo:m.p2_elo,elo_prob_p1:m.elo_prob_p1,elo_prob_p2:m.elo_prob_p2,odds_p1:m.odds_p1||null,odds_p2:m.odds_p2||null,p1data:{elo_overall:m.p1_elo,serve_hold_pct:m.p1_stats&&m.p1_stats.serve_hold_pct||null,break_rate:m.p1_stats&&m.p1_stats.break_rate||null},p2data:{elo_overall:m.p2_elo,serve_hold_pct:m.p2_stats&&m.p2_stats.serve_hold_pct||null,break_rate:m.p2_stats&&m.p2_stats.break_rate||null},h2h:[]}); %>
+      <% const scIdx = allMatchData.length; allMatchData.push({player1:m.player1,player2:m.player2,tournament:m.tournament,surface:m.surface,round:m.round||"",time_ist:m.time_ist||"TBD",tour:m.tour||"",p1_elo:m.p1_elo,p2_elo:m.p2_elo,elo_prob_p1:m.model_p1_pct,elo_prob_p2:m.model_p2_pct,odds_p1:m.odds_p1||null,odds_p2:m.odds_p2||null,p1data:{elo_overall:m.p1_elo,serve_hold_pct:m.p1_stats&&m.p1_stats.serve_hold_pct||null,break_rate:m.p1_stats&&m.p1_stats.break_rate||null},p2data:{elo_overall:m.p2_elo,serve_hold_pct:m.p2_stats&&m.p2_stats.serve_hold_pct||null,break_rate:m.p2_stats&&m.p2_stats.break_rate||null},h2h:[]}); %>
       <%
         const e1 = parseFloat(m.edge_p1)||0;
         const e2 = parseFloat(m.edge_p2)||0;
@@ -257,7 +258,7 @@
           <div class="match-elos">Elo <%= m.p1_elo %> vs <%= m.p2_elo %></div>
         </td>
         <td style="font-size:10px;color:var(--text3);text-align:center"><%= m.round || '—' %></td>
-        <td style="font-family:var(--mono);font-size:12px;text-align:right;color:var(--text2)"><%= m.elo_prob_p1 %>% / <%= m.elo_prob_p2 %>%</td>
+        <td style="font-family:var(--mono);font-size:12px;text-align:right;color:var(--text2)"><%= m.model_p1_pct %>% / <%= m.model_p2_pct %>%</td>
         <td style="font-family:var(--mono);font-size:12px;color:var(--text2);text-align:right">
           <% if(m.odds_p1) { %><%= parseFloat(m.odds_p1).toFixed(2) %> / <%= parseFloat(m.odds_p2).toFixed(2) %><% } else { %>—<% } %>
         </td>
