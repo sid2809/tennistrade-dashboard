@@ -1,96 +1,140 @@
 <%- include('partials/header', { page: 'predictions', pageTitle: 'Predictions' }) %>
 
-<div class="page-header">
-  <h1>Predictions & Suggested Trades</h1>
+<% const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10); %>
+<% const today     = new Date().toISOString().slice(0,10); %>
+<% const tomorrow  = new Date(Date.now() + 86400000).toISOString().slice(0,10); %>
+
+<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap">
   <div>
-    <span class="badge badge-live">LIVE</span>
-    <span class="mono muted" style="margin-left:8px"><%= date %></span>
+    <div class="page-title">Predictions</div>
+    <div class="page-sub">
+      <span class="model-badge">v2_elo_hybrid</span>
+      <span style="color:var(--text3)">·</span>
+      <span style="font-size:12px;color:var(--text2)"><%= date %> · <%= stats.total %> matches · <%= stats.with_odds %> with odds</span>
+      <span style="color:var(--text3)">·</span>
+      <span style="font-size:12px;color:var(--green);font-weight:600"><%= stats.value_bets %> value bets</span>
+      <span style="color:var(--text3)">·</span>
+      <span style="font-size:12px;color:var(--amber);font-weight:600"><%= stats.tradeable %> tradeable</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:4px">
+    <a href="/predictions?date=<%= yesterday %>" class="date-tab <%= date === yesterday ? 'active' : '' %>">Yesterday</a>
+    <a href="/predictions?date=<%= today %>"     class="date-tab <%= date === today     ? 'active' : '' %>">Today</a>
+    <a href="/predictions?date=<%= tomorrow %>"  class="date-tab <%= date === tomorrow  ? 'active' : '' %>">Tomorrow</a>
   </div>
 </div>
 
-<!-- Stats bar -->
-<div class="stat-grid">
-  <div class="stat-card">
-    <div class="stat-label">Matches today</div>
-    <div class="stat-value big"><%= stats.total %></div>
-    <div class="stat-sub"><%= stats.atp_wta %> ATP/WTA singles</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+  <div class="toggle-pills">
+    <button class="toggle-pill active" onclick="showBets('valuebets',this)">Value bets</button>
+    <button class="toggle-pill" onclick="showBets('tradeable',this)">Tradeable</button>
   </div>
-  <div class="stat-card">
-    <div class="stat-label">With odds</div>
-    <div class="stat-value big"><%= stats.with_odds %></div>
-    <div class="stat-sub">pre-match bookmaker odds</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Value bets</div>
-    <div class="stat-value big positive"><%= stats.value_bets %></div>
-    <div class="stat-sub">15%+ edge over bookmaker</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Tradeable</div>
-    <div class="stat-value big"><%= stats.tradeable %></div>
-    <div class="stat-sub">T1/T3/T4/T6 potential</div>
+  <div id="found-label" style="font-size:11px;color:var(--text3);font-family:var(--mono)">
+    <span style="color:var(--green);font-weight:600"><%= stats.value_bets %></span> found · 15%+ edge
   </div>
 </div>
 
-<!-- Date picker -->
-<div class="filters">
-  <% const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10); %>
-  <% const today = new Date().toISOString().slice(0,10); %>
-  <% const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0,10); %>
-  <a href="/predictions?date=<%= yesterday %>" class="filter-btn <%= date === yesterday ? 'active' : '' %>">Yesterday</a>
-  <a href="/predictions?date=<%= today %>" class="filter-btn <%= date === today ? 'active' : '' %>">Today</a>
-  <a href="/predictions?date=<%= tomorrow %>" class="filter-btn <%= date === tomorrow ? 'active' : '' %>">Tomorrow</a>
-</div>
-
+<!-- VALUE BETS -->
+<div id="valuebets" data-count="<%= stats.value_bets %>">
 <% if (valueBets && valueBets.length > 0) { %>
-<div class="section">
-  <div class="section-header">
-    <h2>Value Bets (15%+ Edge)</h2>
-    <span class="badge badge-live"><%= valueBets.length %> found</span>
-  </div>
-  <div class="card-grid">
-    <% valueBets.forEach(v => { %>
-    <div class="prediction-card value-bet">
-      <div class="prediction-header">
-        <span class="badge badge-t6">T6</span>
-        <span class="edge-badge">+<%= v.edge %>% edge</span>
+  <% valueBets.forEach(v => { %>
+  <%
+    const edge = parseFloat(v.edge);
+    const isStrong = edge >= 20;
+    const cardClass = isStrong ? 'strong' : 'mid';
+    const edgeClass = isStrong ? 'strong' : 'mid';
+    const stripClass = isStrong ? 'green-strip' : 'amber-strip';
+    const betColor = isStrong ? 'var(--green)' : 'var(--amber)';
+    const chosenClass = isStrong ? 'chosen-green' : 'chosen-amber';
+    const dotColor = isStrong ? 'var(--green)' : 'var(--amber)';
+    const probFillClass = isStrong ? 'model-g' : 'model-a';
+    const modelProb = v.bet_on === v.player1 ? v.elo_prob_p1 : v.elo_prob_p2;
+    const impliedProb = v.bet_odds ? Math.round(100/parseFloat(v.bet_odds)) : '—';
+    const matchData = JSON.stringify({
+      player1: v.player1, player2: v.player2,
+      tournament: v.tournament, surface: v.surface,
+      round: v.round||'', time_ist: v.time_ist||'TBD', tour: v.tour||'',
+      p1_elo: v.p1_elo, p2_elo: v.p2_elo,
+      elo_prob_p1: v.elo_prob_p1, elo_prob_p2: v.elo_prob_p2,
+      odds_p1: v.odds_p1||null, odds_p2: v.odds_p2||null,
+      p1data: { elo_overall: v.p1_elo, elo_hard: v.p1_stats?.elo_hard, elo_clay: v.p1_stats?.elo_clay, elo_grass: v.p1_stats?.elo_grass, serve_hold_pct: v.p1_stats?.serve_hold_pct, break_rate: v.p1_stats?.break_rate, ranking: v.p1_stats?.ranking },
+      p2data: { elo_overall: v.p2_elo, elo_hard: v.p2_stats?.elo_hard, elo_clay: v.p2_stats?.elo_clay, elo_grass: v.p2_stats?.elo_grass, serve_hold_pct: v.p2_stats?.serve_hold_pct, break_rate: v.p2_stats?.break_rate, ranking: v.p2_stats?.ranking },
+      h2h: []
+    }).replace(/'/g,"&#39;");
+  %>
+  <div class="vbet <%= cardClass %>" onclick="openMatchDrawer(<%- matchData %>)">
+    <div class="vbet-top">
+      <div class="vbet-meta">
+        <span class="edge-tag <%= edgeClass %>">+<%= v.edge %>% edge</span>
+        <span class="dot-sep">·</span>
+        <span class="pill pill-<%= (v.tour||'').toLowerCase().includes('wta') ? 'wta' : 'ch' %>"><%= v.tour || 'Challenger' %></span>
+        <span class="dot-sep">·</span>
+        <span style="color:var(--text2);font-size:12px"><%= v.tournament %></span>
+        <span class="dot-sep">·</span>
+        <span class="pill pill-<%= (v.surface||'hard').toLowerCase() %>"><%= v.surface || 'Hard' %></span>
       </div>
-      <div class="prediction-match">
-        <div class="prediction-player"><%= v.player1 %> <span class="mono muted">(<%= v.p1_elo %>)</span></div>
-        <div class="vs">vs</div>
-        <div class="prediction-player"><%= v.player2 %> <span class="mono muted">(<%= v.p2_elo %>)</span></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <% if(v.round) { %><span class="pill" style="background:var(--bg4);color:var(--text2)"><%= v.round %></span><% } %>
+        <span class="vbet-time"><%= v.time_ist || 'TBD' %></span>
       </div>
-      <div class="prediction-details">
-        <div class="detail-row">
-          <span>Tournament</span>
-          <span><%= v.tournament %></span>
+    </div>
+    <div class="vbet-body">
+      <div class="matchup">
+        <% if (v.bet_on === v.player1) { %>
+        <div class="player">
+          <div class="chosen-pill <%= chosenClass %>">
+            <span class="chosen-dot" style="background:<%= dotColor %>"></span>
+            <span class="player-name" style="color:<%= betColor %>"><%= v.player1 %></span>
+          </div>
+          <div class="player-elo">Elo <%= v.p1_elo %></div>
+          <div class="player-odds-main" style="color:<%= betColor %>">@ <%= parseFloat(v.bet_odds).toFixed(2) %></div>
         </div>
-        <div class="detail-row">
-          <span>Surface</span>
-          <span class="surface-tag surface-<%= (v.surface || '').toLowerCase() %>"><%= v.surface %></span>
+        <% } else { %>
+        <div class="player">
+          <div class="player-name"><%= v.player1 %></div>
+          <div class="player-elo">Elo <%= v.p1_elo %></div>
+          <% if(v.odds_p1) { %><div class="player-odds-muted">@ <%= parseFloat(v.odds_p1).toFixed(2) %></div><% } %>
         </div>
-        <div class="detail-row">
-          <span>Bet on</span>
-          <span class="highlight"><%= v.bet_on %></span>
+        <% } %>
+        <div class="vs-sep">vs</div>
+        <% if (v.bet_on === v.player2) { %>
+        <div class="player right">
+          <div class="chosen-pill <%= chosenClass %>" style="justify-content:flex-end">
+            <span class="player-name" style="color:<%= betColor %>"><%= v.player2 %></span>
+            <span class="chosen-dot" style="background:<%= dotColor %>"></span>
+          </div>
+          <div class="player-elo">Elo <%= v.p2_elo %></div>
+          <div class="player-odds-main" style="color:<%= betColor %>">@ <%= parseFloat(v.bet_odds).toFixed(2) %></div>
         </div>
-        <div class="detail-row">
-          <span>Model probability</span>
-          <span class="mono"><%= v.elo_prob %>%</span>
+        <% } else { %>
+        <div class="player right">
+          <div class="player-name"><%= v.player2 %></div>
+          <div class="player-elo">Elo <%= v.p2_elo %></div>
+          <% if(v.odds_p2) { %><div class="player-odds-muted">@ <%= parseFloat(v.odds_p2).toFixed(2) %></div><% } %>
         </div>
-        <div class="detail-row">
-          <span>Bookmaker odds</span>
-          <span class="mono"><%= v.bet_odds ? parseFloat(v.bet_odds).toFixed(2) : '—' %></span>
+        <% } %>
+      </div>
+
+      <div class="prob-bar-wrap">
+        <div class="prob-bar">
+          <div class="prob-fill <%= probFillClass %>" style="width:<%= v.elo_prob_p1 %>%"><%= v.elo_prob_p1 %>%</div>
+          <div class="prob-fill book" style="width:<%= v.elo_prob_p2 %>%"><%= v.elo_prob_p2 %>%</div>
         </div>
-        <div class="detail-row">
-          <span>Suggested stake</span>
-          <span class="mono"><%= v.stake_pct %></span>
-        </div>
-        <div class="detail-row">
-          <span>Tour</span>
-          <span><%= v.tour %></span>
+        <div class="prob-labels">
+          <div class="prob-label" style="color:<%= betColor %>"><%= modelProb %>% model</div>
+          <div class="prob-label"><%= impliedProb %>% implied</div>
         </div>
       </div>
-      <form action="/trades/log" method="POST" style="margin-top:12px">
+
+      <div class="action-strip <%= stripClass %>">
+        <div class="action-icon" style="background:<%= betColor %>"></div>
+        <div class="action-text">
+          <strong style="color:<%= betColor %>">Back <%= v.bet_on %> @ <%= parseFloat(v.bet_odds).toFixed(2) %></strong>
+          <span style="color:var(--text2)"> — model <%= modelProb %>%, bookie implies <%= impliedProb %>% after overround removal. Edge +<%= v.edge %>%.</span>
+        </div>
+      </div>
+
+      <form action="/trades/log" method="POST" onclick="event.stopPropagation()" style="display:flex;gap:8px">
         <input type="hidden" name="player1" value="<%= v.player1 %>">
         <input type="hidden" name="player2" value="<%= v.player2 %>">
         <input type="hidden" name="tournament" value="<%= v.tournament %>">
@@ -99,160 +143,169 @@
         <input type="hidden" name="bet_on" value="<%= v.bet_on %>">
         <input type="hidden" name="bet_odds" value="<%= v.bet_odds %>">
         <input type="hidden" name="edge" value="<%= v.edge %>">
-        <input type="hidden" name="elo_prob" value="<%= v.elo_prob %>">
+        <input type="hidden" name="elo_prob" value="<%= modelProb %>">
         <input type="hidden" name="strategy" value="T6">
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="number" name="stake" placeholder="Stake ₹" min="100" step="100"
-            style="width:120px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:13px" required>
-          <button type="submit"
-            style="flex:1;padding:7px 12px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:4px;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer">
-            Log Paper Trade
-          </button>
-        </div>
+        <input type="number" name="stake" placeholder="₹ stake" min="100" step="100" class="stake-input" required>
+        <button type="submit" class="log-btn">Log paper trade</button>
       </form>
-    </div>
-    <% }) %>
-  </div>
-</div>
-<% } %>
-
-<% if (tradeable && tradeable.length > 0) { %>
-<div class="section">
-  <div class="section-header">
-    <h2>Tradeable Matches</h2>
-    <span class="muted">Matches with T1/T3/T4/T6 potential</span>
-  </div>
-  <div class="card-grid">
-    <% tradeable.forEach(t => { %>
-    <div class="prediction-card trade-card">
-      <div class="prediction-header">
-        <% t.strategies.forEach(s => { %>
-          <span class="badge badge-<%= s.type.toLowerCase() %>"><%= s.type %></span>
-        <% }) %>
-        <span class="mono muted">Elo gap: <%= t.elo_gap %></span>
-      </div>
-      <div class="prediction-match">
-        <div class="prediction-player <%= t.favorite === t.player1 ? 'fav' : '' %>">
-          <%= t.player1 %> <span class="mono muted">(<%= t.p1_elo %>)</span>
-        </div>
-        <div class="vs">vs</div>
-        <div class="prediction-player <%= t.favorite === t.player2 ? 'fav' : '' %>">
-          <%= t.player2 %> <span class="mono muted">(<%= t.p2_elo %>)</span>
-        </div>
-      </div>
-      <div class="prediction-details">
-        <div class="detail-row">
-          <span>Tournament</span>
-          <span><%= t.tournament %> · <%= t.surface %></span>
-        </div>
-        <div class="detail-row">
-          <span>Favorite</span>
-          <span class="highlight"><%= t.favorite %></span>
-        </div>
-        <% if (t.odds_p1 && t.odds_p2) { %>
-        <div class="detail-row">
-          <span>Odds</span>
-          <span class="mono"><%= parseFloat(t.odds_p1).toFixed(2) %> / <%= parseFloat(t.odds_p2).toFixed(2) %></span>
-        </div>
-        <% } %>
-        <% if (t.p1_stats) { %>
-        <div class="detail-row">
-          <span><%= t.player1 %></span>
-          <span class="mono">Hold <%= t.p1_stats.serve_hold_pct ? (t.p1_stats.serve_hold_pct * 100).toFixed(0) : '—' %>% / Break <%= t.p1_stats.break_rate ? (t.p1_stats.break_rate * 100).toFixed(0) : '—' %>%</span>
-        </div>
-        <% } %>
-        <% if (t.p2_stats) { %>
-        <div class="detail-row">
-          <span><%= t.player2 %></span>
-          <span class="mono">Hold <%= t.p2_stats.serve_hold_pct ? (t.p2_stats.serve_hold_pct * 100).toFixed(0) : '—' %>% / Break <%= t.p2_stats.break_rate ? (t.p2_stats.break_rate * 100).toFixed(0) : '—' %>%</span>
-        </div>
-        <% } %>
-        <% t.strategies.forEach(s => { %>
-        <div class="strategy-note">
-          <span class="badge badge-<%= s.type.toLowerCase() %> small"><%= s.type %></span>
-          <span><%= s.desc %></span>
-          <span class="badge badge-conf-<%= s.confidence.toLowerCase().replace(/[- ]/g,'') %>"><%= s.confidence %></span>
-        </div>
-        <% }) %>
-      </div>
-    </div>
-    <% }) %>
-  </div>
-</div>
-<% } %>
-
-<% if (schedule && schedule.length > 0) { %>
-<div class="section">
-  <div class="section-header">
-    <h2>Full Schedule (<%= date %>)</h2>
-    <span class="mono muted"><%= stats.total %> singles matches</span>
-  </div>
-  <% schedule.forEach(group => { %>
-  <div class="schedule-group">
-    <div class="schedule-header">
-      <span class="badge badge-<%= group.tour === 'ATP' ? 'back' : group.tour === 'WTA' ? 'lay' : 'closed' %>"><%= group.tour %></span>
-      <span class="schedule-tournament"><%= group.tournament %></span>
-      <span class="surface-tag surface-<%= (group.surface || '').toLowerCase() %>"><%= group.surface %></span>
-    </div>
-    <div class="table-wrap">
-      <table class="table compact">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Round</th>
-            <th>Player 1</th>
-            <th>Elo</th>
-            <th>Player 2</th>
-            <th>Elo</th>
-            <th>Model</th>
-            <th>Odds</th>
-            <th>Edge</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% group.matches.forEach(m => { %>
-          <tr>
-            <td class="mono small"><%= m.time_ist || m.time || '—' %></td>
-            <td><%= m.round || '—' %></td>
-            <td class="player-name"><%= m.player1 %></td>
-            <td class="mono"><%= m.p1_elo %></td>
-            <td class="player-name"><%= m.player2 %></td>
-            <td class="mono"><%= m.p2_elo %></td>
-            <td class="mono"><%= m.elo_prob_p1 %>%</td>
-            <td class="mono">
-              <% if (m.odds_p1) { %>
-                <%= parseFloat(m.odds_p1).toFixed(2) %> / <%= parseFloat(m.odds_p2).toFixed(2) %>
-              <% } else { %>
-                —
-              <% } %>
-            </td>
-            <td class="mono">
-              <% const bestEdge = Math.max(parseFloat(m.edge_p1)||0, parseFloat(m.edge_p2)||0); %>
-              <% if (bestEdge > 15) { %>
-                <span class="positive">+<%= bestEdge.toFixed(0) %>%</span>
-              <% } else if (bestEdge > 5) { %>
-                +<%= bestEdge.toFixed(0) %>%
-              <% } else if (m.has_odds) { %>
-                <%= bestEdge.toFixed(0) %>%
-              <% } else { %>
-                —
-              <% } %>
-            </td>
-            <td><%= m.status %></td>
-          </tr>
-          <% }) %>
-        </tbody>
-      </table>
     </div>
   </div>
   <% }) %>
+<% } else { %>
+  <div style="padding:32px;text-align:center;color:var(--text3);border:1px solid var(--border);border-radius:12px;background:var(--bg2)">
+    No value bets found for <%= date %>. Check back after odds are published.
+  </div>
+<% } %>
 </div>
-<% } else if (!predictions || predictions.length === 0) { %>
-<div class="empty-state">
-  <p>No matches found for <%= date %>.</p>
-  <p class="muted">Try checking tomorrow's schedule or verify the API-Tennis key is configured.</p>
+
+<!-- TRADEABLE -->
+<div id="tradeable" style="display:none" data-count="<%= stats.tradeable %>">
+<% if (tradeable && tradeable.length > 0) { %>
+  <% tradeable.forEach(t => { %>
+  <% const matchData = JSON.stringify({
+    player1: t.player1, player2: t.player2,
+    tournament: t.tournament, surface: t.surface,
+    round: t.round||'', time_ist: t.time_ist||'TBD', tour: t.tour||'',
+    p1_elo: t.p1_elo, p2_elo: t.p2_elo,
+    elo_prob_p1: t.elo_prob_p1, elo_prob_p2: t.elo_prob_p2,
+    odds_p1: t.odds_p1||null, odds_p2: t.odds_p2||null,
+    p1data: {elo_overall:t.p1_elo, serve_hold_pct:t.p1_stats?.serve_hold_pct, break_rate:t.p1_stats?.break_rate},
+    p2data: {elo_overall:t.p2_elo, serve_hold_pct:t.p2_stats?.serve_hold_pct, break_rate:t.p2_stats?.break_rate},
+    h2h:[]
+  }).replace(/'/g,"&#39;") %>
+  <div class="tbet" onclick="openMatchDrawer(<%- matchData %>)">
+    <div class="tbet-top">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <% t.strategies.forEach(s => { %>
+          <span class="badge-<%= s.type.toLowerCase() %>"><%= s.type %></span>
+        <% }) %>
+        <span class="dot-sep">·</span>
+        <span class="pill pill-<%= (t.tour||'').toLowerCase().includes('wta') ? 'wta' : 'ch' %>"><%= t.tour || 'Challenger' %></span>
+        <span class="dot-sep">·</span>
+        <span style="color:var(--text2);font-size:12px"><%= t.tournament %></span>
+        <span class="dot-sep">·</span>
+        <span class="pill pill-<%= (t.surface||'hard').toLowerCase() %>"><%= t.surface %></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text3)">Elo gap: <%= t.elo_gap %></span>
+        <span class="vbet-time"><%= t.time_ist || 'TBD' %></span>
+      </div>
+    </div>
+    <div class="tbet-body">
+      <div class="matchup">
+        <div class="player"><div class="player-name"><%= t.player1 %></div><div class="player-elo">Elo <%= t.p1_elo %></div></div>
+        <div class="vs-sep">vs</div>
+        <div class="player right"><div class="player-name"><%= t.player2 %></div><div class="player-elo">Elo <%= t.p2_elo %></div></div>
+      </div>
+      <% if (t.p1_stats || t.p2_stats) { %>
+      <div class="serve-stats">
+        <div>
+          <div style="font-size:10px;color:var(--text3)"><%= t.player1 %></div>
+          <div style="font-family:var(--mono);font-size:12px;margin-top:2px">
+            Hold <%= t.p1_stats?.serve_hold_pct ? Math.round(t.p1_stats.serve_hold_pct*100) + '%' : '—' %> · Break <%= t.p1_stats?.break_rate ? Math.round(t.p1_stats.break_rate*100) + '%' : '—' %>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;color:var(--text3)"><%= t.player2 %></div>
+          <div style="font-family:var(--mono);font-size:12px;margin-top:2px">
+            Hold <%= t.p2_stats?.serve_hold_pct ? Math.round(t.p2_stats.serve_hold_pct*100) + '%' : '—' %> · Break <%= t.p2_stats?.break_rate ? Math.round(t.p2_stats.break_rate*100) + '%' : '—' %>
+          </div>
+        </div>
+      </div>
+      <% } %>
+      <div class="strat-reason">
+        <% t.strategies.forEach((s,i) => { %>
+          <% if(i>0) { %><br><br><% } %>
+          <strong style="color:var(--text)"><%= s.type %> — <%= s.desc %></strong>
+          <span style="color:var(--text3)"> · Confidence: <%= s.confidence %></span>
+        <% }) %>
+      </div>
+      <form action="/trades/log" method="POST" onclick="event.stopPropagation()" style="display:flex;gap:8px">
+        <input type="hidden" name="player1" value="<%= t.player1 %>">
+        <input type="hidden" name="player2" value="<%= t.player2 %>">
+        <input type="hidden" name="tournament" value="<%= t.tournament %>">
+        <input type="hidden" name="surface" value="<%= t.surface %>">
+        <input type="hidden" name="strategy" value="<%= t.strategies[0]?.type || 'T1' %>">
+        <input type="number" name="stake" placeholder="₹ stake" min="100" step="100" class="stake-input" required>
+        <button type="submit" class="log-btn">Log paper trade</button>
+      </form>
+    </div>
+  </div>
+  <% }) %>
+<% } else { %>
+  <div style="padding:32px;text-align:center;color:var(--text3);border:1px solid var(--border);border-radius:12px;background:var(--bg2)">
+    No tradeable matches found for <%= date %>.
+  </div>
+<% } %>
 </div>
+
+<% if (schedule && schedule.length > 0) { %>
+<div style="height:1px;background:var(--border);margin:24px 0"></div>
+<div class="section-label">Full schedule</div>
+<% schedule.forEach(group => { %>
+<div class="sched-group">
+  <div class="sched-head">
+    <span class="pill pill-<%= (group.tour||'').toLowerCase().includes('wta') ? 'wta' : (group.tour||'').toLowerCase().includes('atp') && !group.tour.toLowerCase().includes('challenger') ? 'atp' : 'ch' %>"><%= group.tour %></span>
+    <span class="sched-tournament"><%= group.tournament %></span>
+    <span class="pill pill-<%= (group.surface||'hard').toLowerCase() %>"><%= group.surface %></span>
+  </div>
+  <div class="sched-wrap">
+    <table class="sched-table">
+      <thead><tr>
+        <th style="width:80px">Time IST</th>
+        <th>Match</th>
+        <th style="width:50px;text-align:center">Round</th>
+        <th class="r" style="width:100px">Model</th>
+        <th class="r" style="width:120px">Odds</th>
+        <th class="r" style="width:70px">Edge</th>
+      </tr></thead>
+      <tbody>
+      <% group.matches.forEach(m => { %>
+      <%
+        const e1 = parseFloat(m.edge_p1)||0;
+        const e2 = parseFloat(m.edge_p2)||0;
+        const bestEdge = Math.max(e1,e2);
+        const mData = JSON.stringify({
+          player1:m.player1, player2:m.player2,
+          tournament:m.tournament, surface:m.surface,
+          round:m.round||'', time_ist:m.time_ist||'TBD', tour:m.tour||'',
+          p1_elo:m.p1_elo, p2_elo:m.p2_elo,
+          elo_prob_p1:m.elo_prob_p1, elo_prob_p2:m.elo_prob_p2,
+          odds_p1:m.odds_p1||null, odds_p2:m.odds_p2||null,
+          p1data:{elo_overall:m.p1_elo,serve_hold_pct:m.p1_stats?.serve_hold_pct,break_rate:m.p1_stats?.break_rate},
+          p2data:{elo_overall:m.p2_elo,serve_hold_pct:m.p2_stats?.serve_hold_pct,break_rate:m.p2_stats?.break_rate},
+          h2h:[]
+        }).replace(/'/g,"&#39;");
+      %>
+      <tr onclick="openMatchDrawer(<%- mData %>)">
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text3)"><%= m.time_ist || 'TBD' %></td>
+        <td>
+          <div class="match-names"><%= m.player1 %> vs <%= m.player2 %></div>
+          <div class="match-elos">Elo <%= m.p1_elo %> vs <%= m.p2_elo %></div>
+        </td>
+        <td style="font-size:10px;color:var(--text3);text-align:center"><%= m.round || '—' %></td>
+        <td style="font-family:var(--mono);font-size:12px;text-align:right;color:var(--text2)"><%= m.elo_prob_p1 %>% / <%= m.elo_prob_p2 %>%</td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--text2);text-align:right">
+          <% if(m.odds_p1) { %><%= parseFloat(m.odds_p1).toFixed(2) %> / <%= parseFloat(m.odds_p2).toFixed(2) %><% } else { %>—<% } %>
+        </td>
+        <td style="text-align:right">
+          <% if(!m.has_odds) { %>
+            <span style="font-family:var(--mono);font-size:12px;color:var(--text3)">—</span>
+          <% } else if(bestEdge >= 15) { %>
+            <span class="edge-pos">+<%= bestEdge.toFixed(0) %>%</span>
+          <% } else if(bestEdge >= 5) { %>
+            <span class="edge-mid">+<%= bestEdge.toFixed(0) %>%</span>
+          <% } else { %>
+            <span class="edge-low"><%= bestEdge.toFixed(0) %>%</span>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% }) %>
 <% } %>
 
 <%- include('partials/footer') %>

@@ -5,21 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TennisTrade<%= typeof pageTitle !== 'undefined' ? ' — ' + pageTitle : '' %></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <nav class="nav">
-    <div class="nav-brand">
-      <span class="nav-icon">🎾</span>
-      <span class="nav-title">TennisTrade</span>
+<div class="shell">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:16px">
+      <div class="logo"><span class="logo-dot"></span>TennisTrade</div>
+      <div class="nav">
+        <a href="/" class="nav-btn <%= page === 'home' ? 'active' : '' %>">Overview</a>
+        <a href="/predictions" class="nav-btn <%= page === 'predictions' ? 'active' : '' %>">Predictions</a>
+        <a href="/trades" class="nav-btn <%= page === 'trades' ? 'active' : '' %>">Trades</a>
+        <a href="/players" class="nav-btn <%= page === 'players' ? 'active' : '' %>">Players</a>
+        <a href="/radar" class="nav-btn <%= page === 'radar' ? 'active' : '' %>">Radar</a>
+      </div>
     </div>
-    <div class="nav-links">
-      <a href="/" class="nav-link <%= page === 'home' ? 'active' : '' %>">Overview</a>
-      <a href="/trades" class="nav-link <%= page === 'trades' ? 'active' : '' %>">Trades</a>
-      <a href="/players" class="nav-link <%= page === 'players' ? 'active' : '' %>">Players</a>
-      <a href="/predictions" class="nav-link <%= page === 'predictions' ? 'active' : '' %>">Predictions</a>
-      <a href="/radar" class="nav-link <%= page === 'radar' ? 'active' : '' %>">Radar</a>
+    <div class="topbar-right">
+      <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+      <div class="time-badge" id="clock"></div>
+      <div class="theme-toggle" onclick="toggleTheme()"><div class="theme-knob" id="theme-knob"></div></div>
     </div>
-  </nav>
-  <main class="main">
+  </div>
+  <div class="main">

@@ -1,4 +1,27 @@
-  </main>
-  <script src="/js/app.js"></script>
+  </div><!-- .main -->
+</div><!-- .shell -->
+
+<!-- DRAWER OVERLAY -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+
+<!-- MATCH DRAWER -->
+<div class="drawer" id="match-drawer">
+  <div class="drawer-header">
+    <div class="drawer-title" id="drawer-title">Match Detail</div>
+    <button class="drawer-close" onclick="closeDrawer()">Close ✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-content"></div>
+</div>
+
+<!-- PLAYER DRAWER -->
+<div class="drawer" id="player-drawer">
+  <div class="drawer-header">
+    <div class="drawer-title" id="player-drawer-title">Player</div>
+    <button class="drawer-close" onclick="closeDrawer()">Close ✕</button>
+  </div>
+  <div class="drawer-body" id="player-drawer-content"></div>
+</div>
+
+<script src="/js/app.js"></script>
 </body>
 </html>

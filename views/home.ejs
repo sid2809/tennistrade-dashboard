@@ -1,121 +1,93 @@
 <%- include('partials/header', { page: 'home', pageTitle: 'Overview' }) %>
+<% const istNow = new Date(Date.now() + 5.5*60*60*1000); %>
+<% const istStr = `${istNow.getUTCDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][istNow.getUTCMonth()]} ${istNow.getUTCFullYear()}`; %>
 
-<div class="page-header">
-  <h1>Dashboard</h1>
-  <span class="badge badge-live" id="clock"></span>
+<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px">
+  <div>
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">
+      <span class="model-badge">v2_elo_hybrid</span>
+      <span style="font-size:12px;color:var(--text2)" id="overview-time"><%= istStr %> · <span id="clock-inline"></span></span>
+    </div>
+  </div>
 </div>
 
-<% if (stats) { %>
-<div class="stat-grid">
-  <div class="stat-card">
-    <div class="stat-label">Bankroll</div>
-    <div class="stat-value big"><%= stats.bankroll ? '₹' + parseFloat(stats.bankroll.value || 50000).toLocaleString() : '₹50,000' %></div>
-    <% if (stats.paperTrades) { %>
-      <div class="stat-sub <%= parseFloat(stats.paperTrades.total_pnl) >= 0 ? 'positive' : 'negative' %>">
-        P&L: ₹<%= parseFloat(stats.paperTrades.total_pnl || 0).toLocaleString() %>
-      </div>
+<div class="overview-grid">
+  <div class="ov-card">
+    <div class="ov-label">Bankroll</div>
+    <div class="ov-val">₹<%= Number(stats?.bankroll?.value || 50000).toLocaleString('en-IN') %></div>
+    <div class="ov-sub" style="color:<%= (stats?.paperTrades?.total_pnl || 0) >= 0 ? 'var(--green)' : 'var(--red)' %>">
+      P&L: ₹<%= Number(stats?.paperTrades?.total_pnl || 0).toLocaleString('en-IN', {maximumFractionDigits:0}) %>
+    </div>
+  </div>
+  <div class="ov-card">
+    <div class="ov-label">Paper trades</div>
+    <div class="ov-val"><%= stats?.paperTrades?.total || 0 %></div>
+    <div class="ov-sub"><%= stats?.paperTrades?.wins || 0 %>W · <%= stats?.paperTrades?.losses || 0 %>L · <%= stats?.paperTrades?.open || 0 %> open</div>
+  </div>
+  <div class="ov-card">
+    <div class="ov-label">Database</div>
+    <div class="ov-val"><%= Number(stats?.totalMatches?.c || 0).toLocaleString('en-IN') %></div>
+    <div class="ov-sub">matches loaded</div>
+  </div>
+  <div class="ov-card">
+    <div class="ov-label">Players rated</div>
+    <div class="ov-val"><%= Number(stats?.totalPlayers?.c || 0).toLocaleString('en-IN') %></div>
+    <div class="ov-sub">Elo · AT bridge</div>
+  </div>
+</div>
+
+<div class="section-label" style="margin-bottom:10px">Recent paper trades</div>
+<div class="trade-table-wrap">
+  <table class="trade-table">
+    <thead><tr>
+      <th>Match</th><th>Venue</th><th>Backed</th>
+      <th class="r">Odds</th><th class="r">P&L</th><th class="r">Status</th>
+    </tr></thead>
+    <tbody>
+    <% if (stats?.recentTrades?.length) { %>
+      <% stats.recentTrades.forEach(t => { %>
+      <tr>
+        <td><div style="font-weight:500"><%= t.player1 %> vs <%= t.player2 %></div></td>
+        <td style="color:var(--text2)"><%= t.tournament || '—' %><% if(t.surface){ %> · <%= t.surface %><% } %></td>
+        <td style="color:<%= t.status==='OPEN' ? 'var(--green)' : t.pnl>0 ? 'var(--green)' : 'var(--red)' %>;font-weight:600">
+          <%= t.entry_player || t.player1 %>
+        </td>
+        <td style="text-align:right" class="mono"><%= Number(t.entry_odds).toFixed(2) %></td>
+        <td style="text-align:right">
+          <% if (t.pnl !== null && t.status !== 'OPEN') { %>
+            <span class="<%= t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg' %>"><%= t.pnl >= 0 ? '+' : '' %>₹<%= Math.abs(Math.round(t.pnl)).toLocaleString('en-IN') %></span>
+          <% } else { %><span style="color:var(--text3)">—</span><% } %>
+        </td>
+        <td style="text-align:right">
+          <% if (t.status === 'OPEN') { %>
+            <span style="color:var(--amber);font-size:11px;font-weight:600">OPEN</span>
+          <% } else if (t.pnl > 0) { %>
+            <span class="result-won">Won</span>
+          <% } else { %>
+            <span class="result-lost">Lost</span>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+    <% } else { %>
+      <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">No trades yet — log a value bet from the Predictions page.</td></tr>
     <% } %>
-  </div>
-
-  <div class="stat-card">
-    <div class="stat-label">Paper Trades</div>
-    <div class="stat-value big"><%= stats.paperTrades ? stats.paperTrades.total : 0 %></div>
-    <div class="stat-sub">
-      <span class="positive"><%= stats.paperTrades ? stats.paperTrades.wins : 0 %> W</span> / 
-      <span class="negative"><%= stats.paperTrades ? stats.paperTrades.losses : 0 %> L</span> /
-      <span><%= stats.paperTrades ? stats.paperTrades.open : 0 %> open</span>
-    </div>
-  </div>
-
-  <div class="stat-card">
-    <div class="stat-label">Database</div>
-    <div class="stat-value big"><%= stats.totalMatches ? parseInt(stats.totalMatches.c).toLocaleString() : '—' %></div>
-    <div class="stat-sub">matches loaded</div>
-  </div>
-
-  <div class="stat-card">
-    <div class="stat-label">Players Rated</div>
-    <div class="stat-value big"><%= stats.totalPlayers ? parseInt(stats.totalPlayers.c).toLocaleString() : '—' %></div>
-    <div class="stat-sub">with Elo + stats</div>
-  </div>
+    </tbody>
+  </table>
 </div>
 
-<% if (stats.recentTrades && stats.recentTrades.length > 0) { %>
-<div class="section">
-  <div class="section-header">
-    <h2>Recent Paper Trades</h2>
-    <a href="/trades" class="link">View all →</a>
-  </div>
-  <div class="table-wrap">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Strategy</th>
-          <th>Side</th>
-          <th>Match</th>
-          <th>Entry</th>
-          <th>Exit</th>
-          <th>P&L</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% stats.recentTrades.forEach(t => { %>
-        <tr>
-          <td><span class="badge badge-<%= (t.strategy || '').toLowerCase() %>"><%= t.strategy %></span></td>
-          <td><span class="badge <%= t.entry_side === 'BACK' ? 'badge-back' : 'badge-lay' %>"><%= t.entry_side %></span></td>
-          <td class="match-cell"><%= t.player1 %> vs <%= t.player2 %><br><small class="muted"><%= t.tournament %> · <%= t.surface %></small></td>
-          <td class="mono"><%= t.entry_odds ? parseFloat(t.entry_odds).toFixed(2) : '—' %></td>
-          <td class="mono"><%= t.exit_odds ? parseFloat(t.exit_odds).toFixed(2) : '—' %></td>
-          <td class="mono <%= t.pnl > 0 ? 'positive' : t.pnl < 0 ? 'negative' : '' %>">
-            <%= t.pnl ? '₹' + parseFloat(t.pnl).toLocaleString() : '—' %>
-          </td>
-          <td><span class="badge <%= t.status === 'OPEN' ? 'badge-open' : 'badge-closed' %>"><%= t.status %></span></td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-</div>
-<% } %>
-
-<div class="stat-grid cols-2">
-  <div class="section">
-    <h2>Quick Links</h2>
-    <div class="quick-links">
-      <a href="/predictions" class="quick-link">📊 Today's Predictions</a>
-      <a href="/players?q=Sinner" class="quick-link">🔍 Player Lookup</a>
-      <a href="/trades?period=today" class="quick-link">📝 Today's Trades</a>
-      <a href="/radar" class="quick-link">📡 Radar Status</a>
-    </div>
-  </div>
-  <div class="section">
-    <h2>System Status</h2>
-    <div class="status-grid">
-      <div class="status-row">
-        <span>Database</span>
-        <span class="badge badge-live">Connected</span>
-      </div>
-      <div class="status-row">
-        <span>Matches loaded</span>
-        <span class="mono"><%= stats.totalMatches ? parseInt(stats.totalMatches.c).toLocaleString() : '—' %></span>
-      </div>
-      <div class="status-row">
-        <span>Odds loaded</span>
-        <span class="mono"><%= stats.totalOdds ? parseInt(stats.totalOdds.c).toLocaleString() : '—' %></span>
-      </div>
-      <div class="status-row">
-        <span>Players with stats</span>
-        <span class="mono"><%= stats.totalPlayers ? parseInt(stats.totalPlayers.c).toLocaleString() : '—' %></span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<% } else { %>
-<div class="empty-state">
-  <p>Dashboard loading... Make sure the database is connected and data is loaded.</p>
-</div>
-<% } %>
+<script>
+// Mirror clock to inline span too
+const origUpdate = updateClock;
+function updateClock(){
+  const ist=new Date(Date.now()+(5.5*60*60*1000));
+  const p=n=>n.toString().padStart(2,'0');
+  const t=`${p(ist.getUTCHours())}:${p(ist.getUTCMinutes())}:${p(ist.getUTCSeconds())} IST`;
+  const el=document.getElementById('clock'); if(el) el.textContent=t;
+  const el2=document.getElementById('clock-inline'); if(el2) el2.textContent=t;
+}
+updateClock(); setInterval(updateClock,1000);
+</script>
 
 <%- include('partials/footer') %>

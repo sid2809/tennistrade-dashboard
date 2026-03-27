@@ -1,92 +1,159 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Paper Trades — TennisTrade</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
-<%- include('partials/header', { page: 'trades' }) %>
-<main class="content">
-  <div class="page-header"><h1>Paper Trades</h1><div class="header-meta"><%= stats.total %> trades</div></div>
-  <form class="filters" method="GET" action="/trades">
-    <select name="strategy"><option value="">All Strategies</option>
-      <% ['T1','T2','T3','T4','T5','T6'].forEach(s => { %><option value="<%= s %>" <%= filters.strategy===s?'selected':'' %>><%= s %></option><% }) %>
+<%- include('partials/header', { page: 'trades', pageTitle: 'Trades' }) %>
+
+<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px">
+  <div>
+    <div class="page-title">Paper Trades</div>
+    <div class="page-sub">
+      <span class="model-badge">v2_elo_hybrid</span>
+      <span style="font-size:12px;color:var(--text2)">auto-settlement on</span>
+    </div>
+  </div>
+  <form method="GET" action="/trades" style="display:flex;gap:6px;flex-wrap:wrap">
+    <select name="strategy" style="padding:5px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--sans)">
+      <option value="">All strategies</option>
+      <% ['T1','T3','T4','T6'].forEach(s => { %><option value="<%= s %>" <%= filters.strategy===s?'selected':'' %>><%= s %></option><% }) %>
     </select>
-    <select name="surface"><option value="">All Surfaces</option>
+    <select name="surface" style="padding:5px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--sans)">
+      <option value="">All surfaces</option>
       <% ['Hard','Clay','Grass'].forEach(s => { %><option value="<%= s %>" <%= filters.surface===s?'selected':'' %>><%= s %></option><% }) %>
     </select>
-    <select name="tour"><option value="">All Tours</option>
-      <option value="ATP" <%= filters.tour==='ATP'?'selected':'' %>>ATP</option>
-      <option value="WTA" <%= filters.tour==='WTA'?'selected':'' %>>WTA</option>
-    </select>
-    <select name="period"><option value="">All Time</option>
+    <select name="period" style="padding:5px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--sans)">
+      <option value="">All time</option>
       <option value="today" <%= filters.period==='today'?'selected':'' %>>Today</option>
-      <option value="week" <%= filters.period==='week'?'selected':'' %>>This Week</option>
-      <option value="month" <%= filters.period==='month'?'selected':'' %>>This Month</option>
+      <option value="week" <%= filters.period==='week'?'selected':'' %>>This week</option>
+      <option value="month" <%= filters.period==='month'?'selected':'' %>>This month</option>
     </select>
-    <button type="submit" class="btn">Filter</button>
-    <% if (filters.strategy||filters.surface||filters.tour||filters.period) { %><a href="/trades" class="btn btn-ghost">Clear</a><% } %>
+    <button type="submit" class="log-btn">Filter</button>
+    <% if(filters.strategy||filters.surface||filters.period) { %>
+      <a href="/trades" class="log-btn" style="background:transparent;border-color:var(--border);color:var(--text2)">Clear</a>
+    <% } %>
   </form>
-  <div class="stats-grid small">
-    <div class="stat-card"><div class="stat-label">P&L</div><div class="stat-value <%= stats.total_pnl>=0?'positive':'negative' %>">₹<%= Number(stats.total_pnl).toLocaleString('en-IN',{maximumFractionDigits:0}) %></div></div>
-    <div class="stat-card"><div class="stat-label">ROI</div><div class="stat-value <%= parseFloat(stats.roi)>=0?'positive':'negative' %>"><%= stats.roi %>%</div></div>
-    <div class="stat-card"><div class="stat-label">Win Rate</div><div class="stat-value"><%= stats.total>0?(stats.wins/stats.total*100).toFixed(0):0 %>%</div></div>
-    <div class="stat-card"><div class="stat-label">Trades</div><div class="stat-value"><%= stats.total %></div></div>
+</div>
+
+<% if (dailyPnl && dailyPnl.length > 0) { %>
+<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div class="section-label" style="margin-bottom:0">Cumulative P&L</div>
+    <div style="font-family:var(--mono);font-size:12px;color:<%= parseFloat(stats.total_pnl||0) >= 0 ? 'var(--green)' : 'var(--red)' %>">
+      ₹<%= Number(stats.total_pnl||0).toLocaleString('en-IN',{maximumFractionDigits:0}) %> total
+    </div>
   </div>
-  <% if (byStrategy.length>0) { %><div class="strategy-bars"><% byStrategy.forEach(s => { %>
-    <div class="strat-row"><span class="badge badge-<%= s.strategy %>"><%= s.strategy %></span><span class="strat-count"><%= s.n %> trades</span><span class="strat-wr"><%= s.n>0?(s.wins/s.n*100).toFixed(0):0 %>%</span><span class="mono <%= s.pnl>=0?'positive':'negative' %>">₹<%= Number(s.pnl).toLocaleString('en-IN',{maximumFractionDigits:0}) %></span></div>
-  <% }) %></div><% } %>
-  <% if (dailyPnl.length>0) { %><div class="section"><h2>Cumulative P&L</h2><canvas id="pnlChart" height="180"></canvas></div><% } %>
-  <% if (typeof openTrades !== 'undefined' && openTrades.length > 0) { %>
-  <div class="section">
-    <h2 style="margin-bottom:12px">Open Trades (<%= openTrades.length %>)</h2>
-    <div class="table-wrap"><table><thead><tr>
-      <th>Match</th><th>Bet On</th><th>Odds</th><th>Stake</th><th>Edge</th><th>Logged</th><th>Result</th>
-    </tr></thead><tbody>
+  <canvas id="pnlChart" height="60"></canvas>
+</div>
+<% } %>
+
+<div class="stat-bar">
+  <div class="stat-box">
+    <div class="stat-lbl">P&L</div>
+    <div class="stat-num <%= parseFloat(stats.total_pnl||0)>=0?'pos':'neg' %>">₹<%= Number(stats.total_pnl||0).toLocaleString('en-IN',{maximumFractionDigits:0}) %></div>
+    <div class="stat-sub"><%= stats.total || 0 %> settled</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-lbl">Win rate</div>
+    <div class="stat-num"><%= stats.total > 0 ? Math.round(stats.wins/stats.total*100) : 0 %>%</div>
+    <div class="stat-sub"><%= stats.wins||0 %>W · <%= stats.losses||0 %>L</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-lbl">ROI</div>
+    <div class="stat-num <%= parseFloat(stats.roi||0)>=0?'pos':'neg' %>"><%= stats.roi || '0.0' %>%</div>
+    <div class="stat-sub">on risked capital</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-lbl">Open</div>
+    <div class="stat-num"><%= openTrades ? openTrades.length : 0 %></div>
+    <div class="stat-sub">auto-settling</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-lbl">Staked</div>
+    <div class="stat-num">₹<%= Number(stats.total_risked||0).toLocaleString('en-IN',{maximumFractionDigits:0}) %></div>
+    <div class="stat-sub"><%= stats.total||0 %> trades</div>
+  </div>
+</div>
+
+<% if (openTrades && openTrades.length > 0) { %>
+<div class="section-label" style="margin-bottom:8px">Open trades · settling automatically</div>
+<div class="trade-table-wrap" style="margin-bottom:20px">
+  <table class="trade-table">
+    <thead><tr>
+      <th>Match</th><th>Venue</th><th>Backing</th>
+      <th class="r">Odds</th><th class="r">Edge</th><th class="r">Logged IST</th><th class="r">Override</th>
+    </tr></thead>
+    <tbody>
     <% openTrades.forEach(t => { %>
+    <%
+      const entryIST = t.entry_time ? (() => {
+        const d = new Date(new Date(t.entry_time).getTime() + 5.5*60*60*1000);
+        const p = n => n.toString().padStart(2,'0');
+        const h = d.getUTCHours(), m2 = d.getUTCMinutes();
+        const ampm = h>=12?'PM':'AM';
+        return `${h%12||12}:${p(m2)} ${ampm} · ${d.getUTCDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()]}`;
+      })() : '—';
+    %>
     <tr>
-      <td><%= t.player1 %> v <%= t.player2 %><br><span class="dim" style="font-size:11px"><%= t.tournament %></span></td>
-      <td class="highlight"><%= t.entry_player %></td>
-      <td class="mono"><%= Number(t.entry_odds).toFixed(2) %></td>
-      <td class="mono">₹<%= Number(t.entry_stake).toLocaleString('en-IN') %></td>
-      <td class="mono positive">+<%= Number(t.confidence).toFixed(1) %>%</td>
-      <td class="dim" style="font-size:11px"><%= new Date(t.entry_time).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) %></td>
-      <td>
-        <form action="/trades/<%= t.trade_id %>/close" method="POST" style="display:flex;gap:6px">
-          <button name="result" value="win" style="padding:4px 10px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);border-radius:4px;color:#22c55e;font-size:11px;font-weight:600;cursor:pointer">Won</button>
-          <button name="result" value="loss" style="padding:4px 10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:4px;color:#ef4444;font-size:11px;font-weight:600;cursor:pointer">Lost</button>
-        </form>
+      <td><div style="font-weight:500"><%= t.player1 %> vs <%= t.player2 %></div></td>
+      <td style="color:var(--text2)"><%= t.tournament || '—' %><% if(t.surface) { %> · <%= t.surface %><% } %></td>
+      <td style="color:var(--green);font-weight:600"><%= t.entry_player %></td>
+      <td style="text-align:right" class="mono"><%= Number(t.entry_odds).toFixed(2) %></td>
+      <td style="text-align:right"><span class="edge-pos">+<%= Number(t.confidence||0).toFixed(1) %>%</span></td>
+      <td style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--text3)"><%= entryIST %></td>
+      <td style="text-align:right">
+        <div style="display:flex;gap:4px;justify-content:flex-end">
+          <form action="/trades/<%= t.trade_id %>/close" method="POST" style="display:inline">
+            <button name="result" value="win" class="settle-won">Won</button>
+          </form>
+          <form action="/trades/<%= t.trade_id %>/close" method="POST" style="display:inline">
+            <button name="result" value="loss" class="settle-lost">Lost</button>
+          </form>
+        </div>
       </td>
     </tr>
     <% }) %>
-    </tbody></table></div>
-  </div>
-  <% } %>
-  <% if (typeof openTrades !== 'undefined' && openTrades.length === 0 && !trades.length) { %>
-  <div style="text-align:center;padding:48px;color:var(--text-muted)">No trades yet — log a value bet from the Predictions page.</div>
-  <% } %>
-  <div class="section"><div class="table-wrap"><table><thead><tr><th>Strat</th><th>Match</th><th>Surf</th><th>Side</th><th>In</th><th>Out</th><th>P&L</th><th>%</th><th>Exit</th><th>Date</th></tr></thead><tbody>
-  <% if (!trades.length) { %><tr><td colspan="10" class="empty-cell">No trades match filters</td></tr><% } %>
-  <% trades.forEach(t => { %><tr>
-    <td><span class="badge badge-<%= t.strategy %>"><%= t.strategy %></span></td>
-    <td><%= t.player1 %> v <%= t.player2 %></td>
-    <td><%= t.surface||'—' %></td>
-    <td><span class="side-<%= (t.entry_side||'').toLowerCase() %>"><%= t.entry_side %></span></td>
-    <td class="mono"><%= Number(t.entry_odds).toFixed(2) %></td>
-    <td class="mono"><%= t.exit_odds?Number(t.exit_odds).toFixed(2):'—' %></td>
-    <td class="mono <%= (t.pnl||0)>=0?'positive':'negative' %>"><%= t.pnl!==null?(t.pnl>=0?'+':'')+'₹'+Math.abs(t.pnl).toLocaleString('en-IN',{maximumFractionDigits:0}):'—' %></td>
-    <td class="mono <%= (t.pnl_pct||0)>=0?'positive':'negative' %>"><%= t.pnl_pct?(t.pnl_pct>=0?'+':'')+Number(t.pnl_pct).toFixed(0)+'%':'—' %></td>
-    <td><%= t.exit_type||'—' %></td>
-    <td class="dim"><%= t.exit_time?new Date(t.exit_time).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—' %></td>
-  </tr><% }) %>
-  </tbody></table></div></div>
-</main>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<div class="section-label" style="margin-bottom:8px">Settled trades</div>
+<div class="trade-table-wrap">
+  <table class="trade-table">
+    <thead><tr>
+      <th>Match</th><th>Venue</th><th>Backed</th>
+      <th class="r">Odds</th><th class="r">Stake</th><th class="r">P&L</th><th class="r">Result</th><th class="r">Date</th>
+    </tr></thead>
+    <tbody>
+    <% if (!trades || !trades.length) { %>
+      <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">No trades match filters</td></tr>
+    <% } %>
+    <% (trades||[]).forEach(t => { %>
+    <%
+      const won = t.pnl > 0;
+      const exitDate = t.exit_time ? (() => {
+        const d = new Date(new Date(t.exit_time).getTime() + 5.5*60*60*1000);
+        return `${d.getUTCDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()]}`;
+      })() : '—';
+    %>
+    <tr>
+      <td style="font-weight:500"><%= t.player1 %> vs <%= t.player2 %></td>
+      <td style="color:var(--text2)"><%= t.tournament || '—' %><% if(t.surface) { %> · <%= t.surface %><% } %></td>
+      <td style="color:<%= won ? 'var(--green)' : 'var(--red)' %>;font-weight:600"><%= t.entry_player %></td>
+      <td style="text-align:right" class="mono"><%= Number(t.entry_odds).toFixed(2) %></td>
+      <td style="text-align:right;color:var(--text2)" class="mono">₹<%= Number(t.entry_stake||500).toLocaleString('en-IN') %></td>
+      <td style="text-align:right">
+        <span class="<%= won ? 'pnl-pos' : 'pnl-neg' %>">
+          <%= won ? '+' : '' %>₹<%= Math.abs(Math.round(t.pnl)).toLocaleString('en-IN') %>
+        </span>
+      </td>
+      <td style="text-align:right"><span class="<%= won ? 'result-won' : 'result-lost' %>"><%= won ? 'Won' : 'Lost' %></span></td>
+      <td style="text-align:right;font-size:11px;color:var(--text3)"><%= exitDate %></td>
+    </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+
 <script>
-const d=<%- JSON.stringify(dailyPnl) %>;if(d.length&&document.getElementById('pnlChart')){let c=0;const cp=d.map(x=>{c+=parseFloat(x.pnl);return c});
-new Chart(document.getElementById('pnlChart'),{type:'line',data:{labels:d.map(x=>(x.day||'').split('T')[0]),datasets:[{data:cp,borderColor:cp[cp.length-1]>=0?'#22c55e':'#ef4444',backgroundColor:'transparent',borderWidth:2,tension:.3,pointRadius:2}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',maxTicksLimit:10},grid:{color:'#1f2937'}},y:{ticks:{color:'#6b7280',callback:v=>'₹'+v.toLocaleString()},grid:{color:'#1f2937'}}}}});}
+window._pnlData = <%- JSON.stringify(dailyPnl||[]) %>;
+drawPnl(window._pnlData);
 </script>
-</body></html>
+
+<%- include('partials/footer') %>
