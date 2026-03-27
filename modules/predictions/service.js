@@ -7,12 +7,6 @@ async function getLivePredictions(db, date, req) {
     const appStatsMap = req && req.app.locals.statsMap || {};
     if (!nameIndex) { console.error('Name index not ready'); return []; }
 
-    // Try DB-cached daily odds first (populated by step10_daily_scan.py)
-    const dbRows = await getFromDailyOdds(db, date);
-    if (dbRows.length > 0) {
-      return buildFromDailyOdds(dbRows, appStatsMap);
-    }
-
     const [events, oddsData] = await Promise.all([
       apiTennis.getTodaysEvents(date),
       apiTennis.getTodaysOdds(date),
@@ -22,7 +16,7 @@ async function getLivePredictions(db, date, req) {
 
     const singles = events.filter(e => {
       const t = (e.type || '').toLowerCase();
-      return t.includes('single') && !t.includes('double') && !e.tour.includes('ITF');
+      return t.includes('single') && !t.includes('double');
     });
 
     // Build name->match map for all players
@@ -56,7 +50,9 @@ async function getLivePredictions(db, date, req) {
       const edgeP2 = impliedP2 ? (((1 - eloProbP1) - impliedP2) * 100) : null;
       enriched.push({
         ...match,
-        time_ist: formatIST(match.time),
+        time_ist: match.time && match.date
+          ? formatIST(`${match.date}T${match.time}:00Z`)
+          : formatIST(match.time),
         p1_name_conf: p1Stats?.name_confidence || 'miss',
         p2_name_conf: p2Stats?.name_confidence || 'miss',
         p1_elo: Math.round(p1Elo),
@@ -158,6 +154,7 @@ async function getTodaysSchedule(db, date, req) {
   return Object.values(grouped).sort((a, b) => (tourOrder[a.tour] || 5) - (tourOrder[b.tour] || 5));
 }
 
+module.exports = { getLivePredictions, getValueBets, getTradeableMatches, getTodaysSchedule };
 
 // Synchronous versions that take pre-fetched predictions list
 function getValueBetsFromList(all) {
@@ -221,54 +218,6 @@ function getScheduleFromList(events) {
   }
   const tourOrder = { 'ATP': 0, 'WTA': 1, 'Challenger': 2, 'WTA-ITF': 3, 'ATP-ITF': 4, 'Other': 5 };
   return Object.values(grouped).sort((a, b) => (tourOrder[a.tour] || 5) - (tourOrder[b.tour] || 5));
-}
-
-// ── DB-cached daily odds helpers ─────────────────────────────────────────────
-
-async function getFromDailyOdds(db, date) {
-  try {
-    const r = await db.query(
-      'SELECT * FROM tennis_daily_odds WHERE scan_date = $1 ORDER BY tour, tournament',
-      [date]
-    );
-    return r.rows || [];
-  } catch { return []; }
-}
-
-function buildFromDailyOdds(rows, appStatsMap) {
-  return rows
-    .filter(r => r.p1_conf !== 'miss' && r.p2_conf !== 'miss' &&
-                 r.p1_elo !== 1500 && r.p2_elo !== 1500)
-    .map(r => {
-      const e1 = parseFloat(r.edge_p1) || 0;
-      const e2 = parseFloat(r.edge_p2) || 0;
-      return {
-        event_key: r.event_key,
-        player1: r.player1,
-        player2: r.player2,
-        tournament: r.tournament,
-        tour: r.tour,
-        surface: r.surface,
-        round: r.round || '',
-        time: r.time_utc || '',
-        time_ist: formatIST(r.time_utc),
-        p1_name_conf: r.p1_conf,
-        p2_name_conf: r.p2_conf,
-        p1_elo: Math.round(r.p1_elo),
-        p2_elo: Math.round(r.p2_elo),
-        p1_stats: appStatsMap[r.event_key] || null,
-        p2_stats: null,
-        elo_prob_p1: parseFloat(r.model_p1).toFixed(1),
-        elo_prob_p2: parseFloat(r.model_p2).toFixed(1),
-        odds_p1: r.odds_p1,
-        odds_p2: r.odds_p2,
-        edge_p1: r.edge_p1 ? parseFloat(r.edge_p1).toFixed(1) : null,
-        edge_p2: r.edge_p2 ? parseFloat(r.edge_p2).toFixed(1) : null,
-        has_odds: !!(r.odds_p1 && r.odds_p2),
-        status: 'Upcoming',
-        type: r.tour + ' Singles',
-      };
-    });
 }
 
 module.exports = { getLivePredictions, getValueBets, getTradeableMatches, getTodaysSchedule, getValueBetsFromList, getTradeableFromList, getScheduleFromList };

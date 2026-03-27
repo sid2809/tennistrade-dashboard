@@ -1,56 +1,138 @@
-<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Players — TennisTrade</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css">
-</head><body>
-<%- include('partials/header', { page: 'players' }) %>
-<main class="content">
-  <div class="page-header"><h1>Player Lookup</h1></div>
-  <form class="search-form" method="GET" action="/players">
-    <input type="text" name="q" placeholder="Search player name..." value="<%= q %>" class="search-input" autofocus>
-    <button type="submit" class="btn">Search</button>
-  </form>
-  <% if (player) { %>
-  <div class="player-card">
-    <div class="player-name"><%= player.name %></div>
-    <% if (player.elo) { %>
-    <div class="elo-row">
-      <span class="elo-badge">Elo <%= Number(player.elo.elo_overall).toFixed(0) %></span>
-      <span class="elo-surface">Hard <%= Number(player.elo.elo_hard||0).toFixed(0) %></span>
-      <span class="elo-surface">Clay <%= Number(player.elo.elo_clay||0).toFixed(0) %></span>
-      <span class="elo-surface">Grass <%= Number(player.elo.elo_grass||0).toFixed(0) %></span>
+<%- include('partials/header', { page: 'players', pageTitle: 'Players' }) %>
+
+<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px">
+  <div>
+    <div class="page-title">Player Lookup</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:4px">Click any row for full profile · surface Elo · serve stats</div>
+  </div>
+</div>
+
+<form method="GET" action="/players" style="display:flex;gap:8px;margin-bottom:20px">
+  <input type="text" name="q" placeholder="Search player name..." value="<%= q %>"
+    style="flex:1;max-width:320px;padding:7px 10px;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none">
+  <button type="submit" class="log-btn">Search</button>
+  <% if (q) { %><a href="/players" class="log-btn" style="background:transparent;border-color:var(--border);color:var(--text2)">Clear</a><% } %>
+</form>
+
+<% if (player) { %>
+<div style="border:1px solid var(--green-border);border-radius:12px;overflow:hidden;background:var(--bg2);margin-bottom:20px">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--green-dim);display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:18px;font-weight:600;letter-spacing:-.3px"><%= player.name %></div>
+      <% if (player.elo) { %>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--green);margin-top:2px">Overall Elo: <%= Math.round(player.elo.elo_overall) %></div>
+      <% } %>
     </div>
-    <% } %>
-    <div class="surface-stats">
-      <% allSurfaces.forEach(s => { %>
-      <div class="surface-card">
-        <div class="surface-label"><%= s.surface %></div>
-        <div class="surface-stat"><span class="sl">Matches</span><span class="sv"><%= s.matches_total %> (<%= s.matches_won %>W)</span></div>
-        <div class="surface-stat"><span class="sl">52w matches</span><span class="sv"><%= s.matches_last52w %></span></div>
-        <% if (s.serve_hold_pct) { %><div class="surface-stat"><span class="sl">Serve Hold</span><span class="sv"><%= (s.serve_hold_pct*100).toFixed(1) %>%</span></div><% } %>
-        <% if (s.break_rate) { %><div class="surface-stat"><span class="sl">Break Rate</span><span class="sv"><%= (s.break_rate*100).toFixed(1) %>%</span></div><% } %>
-        <% if (s.bp_saved_pct) { %><div class="surface-stat"><span class="sl">BP Saved</span><span class="sv"><%= (s.bp_saved_pct*100).toFixed(1) %>%</span></div><% } %>
-        <% if (s.aces_per_match) { %><div class="surface-stat"><span class="sl">Aces/match</span><span class="sv"><%= Number(s.aces_per_match).toFixed(1) %></span></div><% } %>
-        <% if (s.df_per_match) { %><div class="surface-stat"><span class="sl">DFs/match</span><span class="sv"><%= Number(s.df_per_match).toFixed(1) %></span></div><% } %>
-        <% if (s.serve_dominance!=null) { %><div class="surface-stat"><span class="sl">Dominance</span><span class="sv <%= s.serve_dominance>=0?'positive':'negative' %>"><%= (s.serve_dominance*100).toFixed(1) %>%</span></div><% } %>
+    <div style="display:flex;gap:6px">
+      <% if (player.elo) { %>
+      <div style="text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 14px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px">Hard</div>
+        <div style="font-family:var(--mono);font-size:15px;font-weight:600"><%= player.elo.elo_hard ? Math.round(player.elo.elo_hard) : '—' %></div>
       </div>
-      <% }) %>
+      <div style="text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 14px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px">Clay</div>
+        <div style="font-family:var(--mono);font-size:15px;font-weight:600"><%= player.elo.elo_clay ? Math.round(player.elo.elo_clay) : '—' %></div>
+      </div>
+      <div style="text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 14px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px">Grass</div>
+        <div style="font-family:var(--mono);font-size:15px;font-weight:600"><%= player.elo.elo_grass ? Math.round(player.elo.elo_grass) : '—' %></div>
+      </div>
+      <% } %>
     </div>
   </div>
-  <% } else if (q) { %>
-  <div class="empty-state"><p>No player found for "<%= q %>"</p></div>
+  <% if (allSurfaces && allSurfaces.length > 0) { %>
+  <div class="trade-table-wrap" style="border:none;border-radius:0">
+    <table class="trade-table">
+      <thead><tr>
+        <th>Surface</th>
+        <th class="r">Matches</th><th class="r">Win %</th>
+        <th class="r">Serve hold %</th><th class="r">Break rate %</th><th class="r">Dominance</th>
+      </tr></thead>
+      <tbody>
+      <% allSurfaces.forEach(s => { %>
+      <tr>
+        <td>
+          <span class="pill pill-<%= (s.surface||'').toLowerCase() %>" style="font-size:11px"><%= s.surface %></span>
+        </td>
+        <td style="text-align:right" class="mono"><%= s.matches_total || '—' %></td>
+        <td style="text-align:right" class="mono"><%= s.matches_total > 0 ? Math.round(s.matches_won/s.matches_total*100) + '%' : '—' %></td>
+        <td style="text-align:right" class="mono"><%= s.serve_hold_pct ? Math.round(s.serve_hold_pct*100) + '%' : '—' %></td>
+        <td style="text-align:right" class="mono"><%= s.break_rate ? Math.round(s.break_rate*100) + '%' : '—' %></td>
+        <td style="text-align:right" class="mono"><%= s.serve_dominance ? s.serve_dominance.toFixed(1) + '%' : '—' %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
   <% } %>
-  <div class="section"><h2>Most Active Players (52 weeks)</h2>
-  <div class="table-wrap"><table><thead><tr><th>Player</th><th>Total</th><th>Won</th><th>52w</th><th>Hold%</th><th>Break%</th><th>Dom</th></tr></thead><tbody>
-  <% topPlayers.forEach(p => { %>
-  <tr class="clickable-row" onclick="location.href='/players?q=<%= encodeURIComponent(p.player_name) %>'">
-    <td><strong><%= p.player_name %></strong></td>
-    <td><%= p.matches_total %></td><td><%= p.matches_won %></td><td><%= p.matches_last52w %></td>
-    <td class="mono"><%= p.serve_hold_pct?(p.serve_hold_pct*100).toFixed(1)+'%':'—' %></td>
-    <td class="mono"><%= p.break_rate?(p.break_rate*100).toFixed(1)+'%':'—' %></td>
-    <td class="mono <%= (p.serve_dominance||0)>=0?'positive':'negative' %>"><%= p.serve_dominance?(p.serve_dominance*100).toFixed(1)+'%':'—' %></td>
-  </tr><% }) %>
-  </tbody></table></div></div>
-</main></body></html>
+  <div style="padding:12px 16px;display:flex;gap:8px">
+    <div class="compute-box" style="flex:1;margin-bottom:0">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Quick edge calculator</div>
+      <% if (player.elo) { %>
+      <div class="compute-row">
+        <span class="compute-label">Bookmaker back odds</span>
+        <input class="compute-input" id="pl-odds" type="number" step="0.01" placeholder="e.g. 2.10" oninput="calcEdge()">
+      </div>
+      <div class="compute-row">
+        <span class="compute-label">Opponent Elo</span>
+        <input class="compute-input" id="pl-opp" type="number" placeholder="e.g. 1650" oninput="calcEdge()">
+      </div>
+      <div class="compute-result" id="pl-res" style="color:var(--text3)">Enter odds and opponent Elo above</div>
+      <script>
+        window._playerElo = <%= player.elo ? Math.round(player.elo.elo_overall) : 1500 %>;
+        function calcEdge(){
+          const odds=parseFloat(document.getElementById('pl-odds')?.value);
+          const opp=parseFloat(document.getElementById('pl-opp')?.value);
+          const el=document.getElementById('pl-res'); if(!el||!odds||!opp) return;
+          const diff=window._playerElo-opp;
+          const mp=1/(1+Math.pow(10,-diff/400));
+          const ip=1/odds;
+          const edge=((mp-ip)*100).toFixed(1);
+          if(parseFloat(edge)>15) el.innerHTML=`<span style="color:var(--green);font-weight:600">+${edge}% edge</span> — model says ${(mp*100).toFixed(0)}%, odds imply ${(ip*100).toFixed(0)}%. Back at these odds.`;
+          else if(parseFloat(edge)>0) el.innerHTML=`<span style="color:var(--amber)">+${edge}% — marginal.</span> Below 15% threshold.`;
+          else el.innerHTML=`<span style="color:var(--red)">${edge}% — no value.</span> Skip.`;
+        }
+      </script>
+      <% } else { %>
+      <div style="color:var(--text3);font-size:12px">No Elo data for this player</div>
+      <% } %>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<% if (!q) { %>
+<div class="section-label" style="margin-bottom:10px">Most active players · last 52 weeks</div>
+<% } %>
+
+<div class="trade-table-wrap">
+  <table class="trade-table">
+    <thead><tr>
+      <th>Player</th>
+      <th class="r">Matches (52w)</th>
+      <th class="r">Total</th>
+      <th class="r">Won</th>
+      <th class="r">Serve hold %</th>
+      <th class="r">Break rate %</th>
+      <th class="r">Dominance</th>
+    </tr></thead>
+    <tbody>
+    <% if (!topPlayers || !topPlayers.length) { %>
+      <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">No player data available</td></tr>
+    <% } %>
+    <% (topPlayers||[]).forEach(p => { %>
+    <tr class="player-row" onclick="window.location='/players?q=<%= encodeURIComponent(p.player_name) %>'">
+      <td><div style="font-weight:500"><%= p.player_name %></div></td>
+      <td style="text-align:right" class="mono"><%= p.matches_last52w || '—' %></td>
+      <td style="text-align:right" class="mono"><%= p.matches_total || '—' %></td>
+      <td style="text-align:right" class="mono"><%= p.matches_won || '—' %></td>
+      <td style="text-align:right" class="mono"><%= p.serve_hold_pct ? Math.round(p.serve_hold_pct*100) + '%' : '—' %></td>
+      <td style="text-align:right" class="mono"><%= p.break_rate ? Math.round(p.break_rate*100) + '%' : '—' %></td>
+      <td style="text-align:right" class="mono"><%= p.serve_dominance ? p.serve_dominance.toFixed(1) + '%' : '—' %></td>
+    </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>

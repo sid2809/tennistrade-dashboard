@@ -1,5 +1,6 @@
 <%- include('partials/header', { page: 'predictions', pageTitle: 'Predictions' }) %>
 
+<% const allMatchData = []; %>
 <% const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10); %>
 <% const today     = new Date().toISOString().slice(0,10); %>
 <% const tomorrow  = new Date(Date.now() + 86400000).toISOString().slice(0,10); %>
@@ -37,7 +38,8 @@
 <!-- VALUE BETS -->
 <div id="valuebets" data-count="<%= stats.value_bets %>">
 <% if (valueBets && valueBets.length > 0) { %>
-  <% valueBets.forEach(v => { %>
+  <% valueBets.forEach((v, vbIdx) => { %>
+  <% allMatchData.push({player1:v.player1,player2:v.player2,tournament:v.tournament,surface:v.surface,round:v.round||"",time_ist:v.time_ist||"TBD",tour:v.tour||"",p1_elo:v.p1_elo,p2_elo:v.p2_elo,elo_prob_p1:v.elo_prob_p1,elo_prob_p2:v.elo_prob_p2,odds_p1:v.odds_p1||null,odds_p2:v.odds_p2||null,p1data:{elo_overall:v.p1_elo,elo_hard:v.p1_stats&&v.p1_stats.elo_hard||null,elo_clay:v.p1_stats&&v.p1_stats.elo_clay||null,elo_grass:v.p1_stats&&v.p1_stats.elo_grass||null,serve_hold_pct:v.p1_stats&&v.p1_stats.serve_hold_pct||null,break_rate:v.p1_stats&&v.p1_stats.break_rate||null},p2data:{elo_overall:v.p2_elo,elo_hard:v.p2_stats&&v.p2_stats.elo_hard||null,elo_clay:v.p2_stats&&v.p2_stats.elo_clay||null,elo_grass:v.p2_stats&&v.p2_stats.elo_grass||null,serve_hold_pct:v.p2_stats&&v.p2_stats.serve_hold_pct||null,break_rate:v.p2_stats&&v.p2_stats.break_rate||null},h2h:[]}); %>
   <%
     const edge = parseFloat(v.edge);
     const isStrong = edge >= 20;
@@ -50,19 +52,8 @@
     const probFillClass = isStrong ? 'model-g' : 'model-a';
     const modelProb = v.bet_on === v.player1 ? v.elo_prob_p1 : v.elo_prob_p2;
     const impliedProb = v.bet_odds ? Math.round(100/parseFloat(v.bet_odds)) : '—';
-    const matchData = JSON.stringify({
-      player1: v.player1, player2: v.player2,
-      tournament: v.tournament, surface: v.surface,
-      round: v.round||'', time_ist: v.time_ist||'TBD', tour: v.tour||'',
-      p1_elo: v.p1_elo, p2_elo: v.p2_elo,
-      elo_prob_p1: v.elo_prob_p1, elo_prob_p2: v.elo_prob_p2,
-      odds_p1: v.odds_p1||null, odds_p2: v.odds_p2||null,
-      p1data: { elo_overall: v.p1_elo, elo_hard: v.p1_stats?.elo_hard, elo_clay: v.p1_stats?.elo_clay, elo_grass: v.p1_stats?.elo_grass, serve_hold_pct: v.p1_stats?.serve_hold_pct, break_rate: v.p1_stats?.break_rate, ranking: v.p1_stats?.ranking },
-      p2data: { elo_overall: v.p2_elo, elo_hard: v.p2_stats?.elo_hard, elo_clay: v.p2_stats?.elo_clay, elo_grass: v.p2_stats?.elo_grass, serve_hold_pct: v.p2_stats?.serve_hold_pct, break_rate: v.p2_stats?.break_rate, ranking: v.p2_stats?.ranking },
-      h2h: []
-    }).replace(/'/g,"&#39;");
   %>
-  <div class="vbet <%= cardClass %>" onclick="openMatchDrawer(<%- matchData %>)">
+  <div class="vbet <%= cardClass %>" onclick="openMD(<%= vbIdx %>)">
     <div class="vbet-top">
       <div class="vbet-meta">
         <span class="edge-tag <%= edgeClass %>">+<%= v.edge %>% edge</span>
@@ -87,13 +78,13 @@
             <span class="player-name" style="color:<%= betColor %>"><%= v.player1 %></span>
           </div>
           <div class="player-elo">Elo <%= v.p1_elo %></div>
-          <div class="player-odds-main" style="color:<%= betColor %>">@ <%= parseFloat(v.bet_odds).toFixed(2) %></div>
+          <div class="player-odds-main" style="color:<%= betColor %>">back @ <%= parseFloat(v.bet_odds).toFixed(2) %></div>
         </div>
         <% } else { %>
         <div class="player">
           <div class="player-name"><%= v.player1 %></div>
           <div class="player-elo">Elo <%= v.p1_elo %></div>
-          <% if(v.odds_p1) { %><div class="player-odds-muted">@ <%= parseFloat(v.odds_p1).toFixed(2) %></div><% } %>
+          <% if(v.odds_p1) { %><div class="player-odds-muted" title="Back odds">back @ <%= parseFloat(v.odds_p1).toFixed(2) %></div><% } %>
         </div>
         <% } %>
         <div class="vs-sep">vs</div>
@@ -104,13 +95,13 @@
             <span class="chosen-dot" style="background:<%= dotColor %>"></span>
           </div>
           <div class="player-elo">Elo <%= v.p2_elo %></div>
-          <div class="player-odds-main" style="color:<%= betColor %>">@ <%= parseFloat(v.bet_odds).toFixed(2) %></div>
+          <div class="player-odds-main" style="color:<%= betColor %>">back @ <%= parseFloat(v.bet_odds).toFixed(2) %></div>
         </div>
         <% } else { %>
         <div class="player right">
           <div class="player-name"><%= v.player2 %></div>
           <div class="player-elo">Elo <%= v.p2_elo %></div>
-          <% if(v.odds_p2) { %><div class="player-odds-muted">@ <%= parseFloat(v.odds_p2).toFixed(2) %></div><% } %>
+          <% if(v.odds_p2) { %><div class="player-odds-muted" title="Back odds">back @ <%= parseFloat(v.odds_p2).toFixed(2) %></div><% } %>
         </div>
         <% } %>
       </div>
@@ -161,19 +152,10 @@
 <!-- TRADEABLE -->
 <div id="tradeable" style="display:none" data-count="<%= stats.tradeable %>">
 <% if (tradeable && tradeable.length > 0) { %>
-  <% tradeable.forEach(t => { %>
-  <% const matchData = JSON.stringify({
-    player1: t.player1, player2: t.player2,
-    tournament: t.tournament, surface: t.surface,
-    round: t.round||'', time_ist: t.time_ist||'TBD', tour: t.tour||'',
-    p1_elo: t.p1_elo, p2_elo: t.p2_elo,
-    elo_prob_p1: t.elo_prob_p1, elo_prob_p2: t.elo_prob_p2,
-    odds_p1: t.odds_p1||null, odds_p2: t.odds_p2||null,
-    p1data: {elo_overall:t.p1_elo, serve_hold_pct:t.p1_stats?.serve_hold_pct, break_rate:t.p1_stats?.break_rate},
-    p2data: {elo_overall:t.p2_elo, serve_hold_pct:t.p2_stats?.serve_hold_pct, break_rate:t.p2_stats?.break_rate},
-    h2h:[]
-  }).replace(/'/g,"&#39;") %>
-  <div class="tbet" onclick="openMatchDrawer(<%- matchData %>)">
+  <% tradeable.forEach((t, tbIdx_base) => { %>
+  <% const tbIdx = allMatchData.length; allMatchData.push({player1:t.player1,player2:t.player2,tournament:t.tournament,surface:t.surface,round:t.round||"",time_ist:t.time_ist||"TBD",tour:t.tour||"",p1_elo:t.p1_elo,p2_elo:t.p2_elo,elo_prob_p1:t.elo_prob_p1,elo_prob_p2:t.elo_prob_p2,odds_p1:t.odds_p1||null,odds_p2:t.odds_p2||null,p1data:{elo_overall:t.p1_elo,serve_hold_pct:t.p1_stats&&t.p1_stats.serve_hold_pct||null,break_rate:t.p1_stats&&t.p1_stats.break_rate||null},p2data:{elo_overall:t.p2_elo,serve_hold_pct:t.p2_stats&&t.p2_stats.serve_hold_pct||null,break_rate:t.p2_stats&&t.p2_stats.break_rate||null},h2h:[]}); %>
+
+  <div class="tbet" onclick="openMD(<%= tbIdx %>)">
     <div class="tbet-top">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <% t.strategies.forEach(s => { %>
@@ -260,24 +242,15 @@
         <th class="r" style="width:70px">Edge</th>
       </tr></thead>
       <tbody>
-      <% group.matches.forEach(m => { %>
+      <% group.matches.forEach((m, mIdx) => { %>
+      <% const scIdx = allMatchData.length; allMatchData.push({player1:m.player1,player2:m.player2,tournament:m.tournament,surface:m.surface,round:m.round||"",time_ist:m.time_ist||"TBD",tour:m.tour||"",p1_elo:m.p1_elo,p2_elo:m.p2_elo,elo_prob_p1:m.elo_prob_p1,elo_prob_p2:m.elo_prob_p2,odds_p1:m.odds_p1||null,odds_p2:m.odds_p2||null,p1data:{elo_overall:m.p1_elo,serve_hold_pct:m.p1_stats&&m.p1_stats.serve_hold_pct||null,break_rate:m.p1_stats&&m.p1_stats.break_rate||null},p2data:{elo_overall:m.p2_elo,serve_hold_pct:m.p2_stats&&m.p2_stats.serve_hold_pct||null,break_rate:m.p2_stats&&m.p2_stats.break_rate||null},h2h:[]}); %>
       <%
         const e1 = parseFloat(m.edge_p1)||0;
         const e2 = parseFloat(m.edge_p2)||0;
         const bestEdge = Math.max(e1,e2);
-        const mData = JSON.stringify({
-          player1:m.player1, player2:m.player2,
-          tournament:m.tournament, surface:m.surface,
-          round:m.round||'', time_ist:m.time_ist||'TBD', tour:m.tour||'',
-          p1_elo:m.p1_elo, p2_elo:m.p2_elo,
-          elo_prob_p1:m.elo_prob_p1, elo_prob_p2:m.elo_prob_p2,
-          odds_p1:m.odds_p1||null, odds_p2:m.odds_p2||null,
-          p1data:{elo_overall:m.p1_elo,serve_hold_pct:m.p1_stats?.serve_hold_pct,break_rate:m.p1_stats?.break_rate},
-          p2data:{elo_overall:m.p2_elo,serve_hold_pct:m.p2_stats?.serve_hold_pct,break_rate:m.p2_stats?.break_rate},
-          h2h:[]
-        }).replace(/'/g,"&#39;");
+
       %>
-      <tr onclick="openMatchDrawer(<%- mData %>)">
+      <tr onclick="openMD(<%= scIdx %>)" style="cursor:pointer">
         <td style="font-family:var(--mono);font-size:11px;color:var(--text3)"><%= m.time_ist || 'TBD' %></td>
         <td>
           <div class="match-names"><%= m.player1 %> vs <%= m.player2 %></div>
@@ -308,4 +281,8 @@
 <% }) %>
 <% } %>
 
+<script>
+var _matchData = <%- JSON.stringify(allMatchData) %>;
+function openMD(i){ if(_matchData[i]) openMatchDrawer(_matchData[i]); }
+</script>
 <%- include('partials/footer') %>
