@@ -88,12 +88,21 @@ async function getLivePredictions(db, date, req) {
   }
 }
 
+// Tours to exclude from value bets (low quality odds, tiny fields)
+const EXCLUDED_TOURS = ['ATP-ITF', 'WTA-ITF', 'ITF', 'ATP-M15', 'WTA-M15'];
+const MIN_BET_ODDS = 1.30;  // Ignore odds below 1.30 - implies 77%+ probability, model rarely beats that
+const MAX_BET_ODDS = 8.00;  // Ignore extreme outsiders - model Elo is unreliable for huge underdogs
+
 async function getValueBets(db, date, req) {
   const all = await getLivePredictions(db, date, req);
   return all.filter(m => {
     if (!m.has_odds) return false;
+    if (EXCLUDED_TOURS.some(t => (m.tour || '').includes(t))) return false;
+    // Filter out matches where bet odds are outside sensible range
     const e1 = parseFloat(m.edge_p1) || 0;
     const e2 = parseFloat(m.edge_p2) || 0;
+    const betOdds = e1 > e2 ? m.odds_p1 : m.odds_p2;
+    if (betOdds < MIN_BET_ODDS || betOdds > MAX_BET_ODDS) return false;
     return e1 >= 15 || e2 >= 15;
   }).map(m => {
     const e1 = parseFloat(m.edge_p1) || 0;
@@ -160,8 +169,11 @@ module.exports = { getLivePredictions, getValueBets, getTradeableMatches, getTod
 function getValueBetsFromList(all) {
   return all.filter(m => {
     if (!m.has_odds) return false;
+    if (EXCLUDED_TOURS.some(t => (m.tour || '').includes(t))) return false;
     const e1 = parseFloat(m.edge_p1) || 0;
     const e2 = parseFloat(m.edge_p2) || 0;
+    const betOdds = e1 > e2 ? m.odds_p1 : m.odds_p2;
+    if (betOdds < MIN_BET_ODDS || betOdds > MAX_BET_ODDS) return false;
     return e1 >= 15 || e2 >= 15;
   }).map(m => {
     const e1 = parseFloat(m.edge_p1) || 0;

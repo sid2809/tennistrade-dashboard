@@ -4,13 +4,20 @@ const service = require('./service');
 
 router.get('/', async (req, res) => {
   try {
-    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    // Default to IST date, not UTC
+    let date = req.query.date;
+    if (!date) {
+      const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+      date = ist.toISOString().slice(0, 10);
+    }
     const db = req.app.locals.pool;
 
-    const predictions = await service.getLivePredictions(db, date, req);
-    const valueBets = service.getValueBetsFromList(predictions);
-    const tradeable = service.getTradeableFromList(predictions);
-    const schedule = service.getScheduleFromList(predictions);
+    const [predictions, valueBets, tradeable, schedule] = await Promise.all([
+      service.getLivePredictions(db, date, req),
+      service.getValueBets(db, date, req),
+      service.getTradeableMatches(db, date, req),
+      service.getTodaysSchedule(db, date, req),
+    ]);
 
     const stats = {
       total: predictions.length,
