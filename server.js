@@ -86,11 +86,11 @@ app.get('/', async (req, res) => {
       totalOdds: 'SELECT COUNT(*) as c FROM tennis_odds',
       paperTrades: `SELECT 
         COUNT(*) as total,
-        COUNT(*) FILTER (WHERE status = 'CLOSED') as closed,
+        COUNT(*) FILTER (WHERE status IN ('CLOSED','WON','LOST')) as closed,
         COUNT(*) FILTER (WHERE status = 'OPEN') as open,
-        COALESCE(SUM(pnl) FILTER (WHERE status = 'CLOSED'), 0) as total_pnl,
-        COUNT(*) FILTER (WHERE pnl > 0) as wins,
-        COUNT(*) FILTER (WHERE pnl < 0) as losses
+        COALESCE(SUM(pnl) FILTER (WHERE status IN ('CLOSED','WON','LOST')), 0) as total_pnl,
+        COUNT(*) FILTER (WHERE status = 'WON' OR (status = 'CLOSED' AND pnl > 0)) as wins,
+        COUNT(*) FILTER (WHERE status = 'LOST' OR (status = 'CLOSED' AND pnl < 0)) as losses
       FROM paper_trades`,
       recentTrades: `SELECT trade_id, strategy, player1, player2, entry_side, 
         entry_odds, exit_odds, pnl, pnl_pct, status, entry_time, exit_time,

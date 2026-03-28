@@ -6,7 +6,7 @@ router.get('/', async (req, res) => {
   const { strategy, surface, tour, period, sort } = req.query;
 
   try {
-    let where = ["status = 'CLOSED'"];
+    let where = ["status IN ('CLOSED', 'WON', 'LOST')"];
     let params = [];
     let idx = 1;
 
@@ -88,6 +88,37 @@ router.get('/', async (req, res) => {
       filters: {},
     });
   }
+});
+
+// Manual settlement — override for auto-settle failures or dashboard buttons
+router.post('/:id/close', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const tradeId = req.params.id;
+  const result = req.body.result; // 'win' or 'loss'
+
+  try {
+    const trade = await pool.query('SELECT * FROM paper_trades WHERE trade_id = $1', [tradeId]);
+    if (!trade.rows[0]) return res.redirect('/trades');
+
+    const t = trade.rows[0];
+    const won = result === 'win';
+
+    // Simple back-bet PnL: win = stake * (odds - 1), loss = -stake
+    const stake = parseFloat(t.entry_stake) || 500;
+    const odds = parseFloat(t.entry_odds) || 1;
+    const pnl = won ? Math.round(stake * (odds - 1)) : -stake;
+
+    await pool.query(
+      `UPDATE paper_trades
+       SET status = $1, pnl = $2, exit_time = NOW(),
+           exit_reason = 'manual_dashboard', settled_by = 'manual'
+       WHERE trade_id = $3`,
+      [won ? 'WON' : 'LOST', pnl, tradeId]
+    );
+  } catch (err) {
+    console.error('Settle error:', err);
+  }
+  res.redirect('/trades');
 });
 
 module.exports = router;

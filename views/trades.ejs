@@ -126,11 +126,13 @@
     <% } %>
     <% (trades||[]).forEach(t => { %>
     <%
-      const won = t.pnl > 0;
-      const exitDate = t.exit_time ? (() => {
-        const d = new Date(new Date(t.exit_time).getTime() + 5.5*60*60*1000);
+      const won = t.status === 'WON' || (t.status === 'CLOSED' && t.pnl > 0);
+      const exitDate = (t.exit_time || t.settled_at) ? (() => {
+        const d = new Date(new Date(t.exit_time || t.settled_at).getTime() + 5.5*60*60*1000);
         return `${d.getUTCDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()]}`;
       })() : '—';
+      const pnlNum = parseFloat(t.pnl) || 0;
+      const pnlDisplay = won ? `+₹${Math.abs(Math.round(pnlNum)).toLocaleString('en-IN')}` : `-₹${Math.abs(Math.round(pnlNum)).toLocaleString('en-IN')}`;
     %>
     <tr>
       <td style="font-weight:500"><%= t.player1 %> vs <%= t.player2 %></td>
@@ -140,7 +142,7 @@
       <td style="text-align:right;color:var(--text2)" class="mono">₹<%= Number(t.entry_stake||500).toLocaleString('en-IN') %></td>
       <td style="text-align:right">
         <span class="<%= won ? 'pnl-pos' : 'pnl-neg' %>">
-          <%= won ? '+' : '' %>₹<%= Math.abs(Math.round(t.pnl)).toLocaleString('en-IN') %>
+          <%= won ? '+' : '-' %>₹<%= Math.abs(Math.round(pnlNum)).toLocaleString('en-IN') %>
         </span>
       </td>
       <td style="text-align:right"><span class="<%= won ? 'result-won' : 'result-lost' %>"><%= won ? 'Won' : 'Lost' %></span></td>
