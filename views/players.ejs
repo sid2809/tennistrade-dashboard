@@ -101,7 +101,9 @@
 </div>
 <% } %>
 
-<% if (!q) { %>
+<% if (multipleResults) { %>
+<div class="section-label" style="margin-bottom:10px"><%= topPlayers.length %> players found for "<%= q %>" · click to view</div>
+<% } else if (!q) { %>
 <div class="section-label" style="margin-bottom:10px">Most active players · last 52 weeks</div>
 <% } %>
 
@@ -118,10 +120,12 @@
     </tr></thead>
     <tbody>
     <% if (!topPlayers || !topPlayers.length) { %>
-      <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">No player data available</td></tr>
+      <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">
+        <%= q ? 'No players found for "' + q + '"' : 'No player data available' %>
+      </td></tr>
     <% } %>
     <% (topPlayers||[]).forEach(p => { %>
-    <tr class="player-row" onclick="window.location='/players?q=<%= encodeURIComponent(p.player_name) %>'">
+    <tr class="player-row" onclick="window.location='/players?pid=<%= p.player_id %>'">
       <td><div style="font-weight:500"><%= p.player_name %></div></td>
       <td style="text-align:right" class="mono"><%= p.matches_last52w || '—' %></td>
       <td style="text-align:right" class="mono"><%= p.matches_total || '—' %></td>
