@@ -40,7 +40,7 @@
 <div id="valuebets" data-count="<%= stats.value_bets %>">
 <% if (valueBets && valueBets.length > 0) { %>
   <% valueBets.forEach((v, vbIdx) => { %>
-  <% allMatchData.push({player1:v.player1,player2:v.player2,tournament:v.tournament,surface:v.surface,round:v.round||"",time_ist:v.time_ist||"TBD",tour:v.tour||"",p1_elo:v.p1_elo,p2_elo:v.p2_elo,elo_prob_p1:v.model_p1_pct,elo_prob_p2:v.model_p2_pct,odds_p1:v.odds_p1||null,odds_p2:v.odds_p2||null,p1data:{elo_overall:v.p1_elo,elo_hard:v.p1_stats&&v.p1_stats.elo_hard||null,elo_clay:v.p1_stats&&v.p1_stats.elo_clay||null,elo_grass:v.p1_stats&&v.p1_stats.elo_grass||null,serve_hold_pct:v.p1_stats&&v.p1_stats.serve_hold_pct||null,break_rate:v.p1_stats&&v.p1_stats.break_rate||null},p2data:{elo_overall:v.p2_elo,elo_hard:v.p2_stats&&v.p2_stats.elo_hard||null,elo_clay:v.p2_stats&&v.p2_stats.elo_clay||null,elo_grass:v.p2_stats&&v.p2_stats.elo_grass||null,serve_hold_pct:v.p2_stats&&v.p2_stats.serve_hold_pct||null,break_rate:v.p2_stats&&v.p2_stats.break_rate||null},h2h:[]}); %>
+  <% allMatchData.push({player1:v.player1,player2:v.player2,tournament:v.tournament,surface:v.surface,round:v.round||"",time_ist:v.time_ist||"TBD",tour:v.tour||"",p1_elo:v.p1_elo,p2_elo:v.p2_elo,elo_prob_p1:v.model_p1_pct,elo_prob_p2:v.model_p2_pct,odds_p1:v.odds_p1||null,odds_p2:v.odds_p2||null,p1data:v.p1data||{elo_overall:v.p1_elo},p2data:v.p2data||{elo_overall:v.p2_elo},h2h:[]}); %>
   <%
     const edge = v.bestEdge;
     const isStrong = edge >= 20;
@@ -154,7 +154,7 @@
 <div id="tradeable" style="display:none" data-count="<%= stats.tradeable %>">
 <% if (tradeable && tradeable.length > 0) { %>
   <% tradeable.forEach((t, tbIdx_base) => { %>
-  <% const tbIdx = allMatchData.length; allMatchData.push({player1:t.player1,player2:t.player2,tournament:t.tournament,surface:t.surface,round:t.round||"",time_ist:t.time_ist||"TBD",tour:t.tour||"",p1_elo:t.p1_elo,p2_elo:t.p2_elo,elo_prob_p1:t.model_p1_pct,elo_prob_p2:t.model_p2_pct,odds_p1:t.odds_p1||null,odds_p2:t.odds_p2||null,p1data:{elo_overall:t.p1_elo,serve_hold_pct:t.p1_stats&&t.p1_stats.serve_hold_pct||null,break_rate:t.p1_stats&&t.p1_stats.break_rate||null},p2data:{elo_overall:t.p2_elo,serve_hold_pct:t.p2_stats&&t.p2_stats.serve_hold_pct||null,break_rate:t.p2_stats&&t.p2_stats.break_rate||null},h2h:[]}); %>
+  <% const tbIdx = allMatchData.length; allMatchData.push({player1:t.player1,player2:t.player2,tournament:t.tournament,surface:t.surface,round:t.round||"",time_ist:t.time_ist||"TBD",tour:t.tour||"",p1_elo:t.p1_elo,p2_elo:t.p2_elo,elo_prob_p1:t.model_p1_pct,elo_prob_p2:t.model_p2_pct,odds_p1:t.odds_p1||null,odds_p2:t.odds_p2||null,p1data:t.p1data||{elo_overall:t.p1_elo},p2data:t.p2data||{elo_overall:t.p2_elo},h2h:[]}); %>
 
   <div class="tbet" onclick="openMD(<%= tbIdx %>)">
     <div class="tbet-top">
@@ -180,18 +180,18 @@
         <div class="vs-sep">vs</div>
         <div class="player right"><div class="player-name"><%= t.player2 %></div><div class="player-elo">Elo <%= t.p2_elo %></div></div>
       </div>
-      <% if (t.p1_stats || t.p2_stats) { %>
+      <% if (t.p1data || t.p2data) { %>
       <div class="serve-stats">
         <div>
           <div style="font-size:10px;color:var(--text3)"><%= t.player1 %></div>
           <div style="font-family:var(--mono);font-size:12px;margin-top:2px">
-            Hold <%= t.p1_stats?.serve_hold_pct ? Math.round(t.p1_stats.serve_hold_pct*100) + '%' : '—' %> · Break <%= t.p1_stats?.break_rate ? Math.round(t.p1_stats.break_rate*100) + '%' : '—' %>
+            Hold <%= t.p1data&&t.p1data.serve_hold_pct ? Math.round(t.p1data.serve_hold_pct*100) + '%' : '—' %> · Break <%= t.p1data&&t.p1data.break_rate ? Math.round(t.p1data.break_rate*100) + '%' : '—' %>
           </div>
         </div>
         <div style="text-align:right">
           <div style="font-size:10px;color:var(--text3)"><%= t.player2 %></div>
           <div style="font-family:var(--mono);font-size:12px;margin-top:2px">
-            Hold <%= t.p2_stats?.serve_hold_pct ? Math.round(t.p2_stats.serve_hold_pct*100) + '%' : '—' %> · Break <%= t.p2_stats?.break_rate ? Math.round(t.p2_stats.break_rate*100) + '%' : '—' %>
+            Hold <%= t.p2data&&t.p2data.serve_hold_pct ? Math.round(t.p2data.serve_hold_pct*100) + '%' : '—' %> · Break <%= t.p2data&&t.p2data.break_rate ? Math.round(t.p2data.break_rate*100) + '%' : '—' %>
           </div>
         </div>
       </div>
@@ -244,7 +244,7 @@
       </tr></thead>
       <tbody>
       <% group.matches.forEach((m, mIdx) => { %>
-      <% const scIdx = allMatchData.length; allMatchData.push({player1:m.player1,player2:m.player2,tournament:m.tournament,surface:m.surface,round:m.round||"",time_ist:m.time_ist||"TBD",tour:m.tour||"",p1_elo:m.p1_elo,p2_elo:m.p2_elo,elo_prob_p1:m.model_p1_pct,elo_prob_p2:m.model_p2_pct,odds_p1:m.odds_p1||null,odds_p2:m.odds_p2||null,p1data:{elo_overall:m.p1_elo,serve_hold_pct:m.p1_stats&&m.p1_stats.serve_hold_pct||null,break_rate:m.p1_stats&&m.p1_stats.break_rate||null},p2data:{elo_overall:m.p2_elo,serve_hold_pct:m.p2_stats&&m.p2_stats.serve_hold_pct||null,break_rate:m.p2_stats&&m.p2_stats.break_rate||null},h2h:[]}); %>
+      <% const scIdx = allMatchData.length; allMatchData.push({player1:m.player1,player2:m.player2,tournament:m.tournament,surface:m.surface,round:m.round||"",time_ist:m.time_ist||"TBD",tour:m.tour||"",p1_elo:m.p1_elo,p2_elo:m.p2_elo,elo_prob_p1:m.model_p1_pct,elo_prob_p2:m.model_p2_pct,odds_p1:m.odds_p1||null,odds_p2:m.odds_p2||null,p1data:m.p1data||{elo_overall:m.p1_elo},p2data:m.p2data||{elo_overall:m.p2_elo},h2h:[]}); %>
       <%
         const e1 = parseFloat(m.edge_p1)||0;
         const e2 = parseFloat(m.edge_p2)||0;

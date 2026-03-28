@@ -38,7 +38,55 @@ router.get('/', async (req, res) => {
 
     const rows = result.rows;
 
+    // Enrich with surface Elos from at_elo_current and serve stats from tennis_player_stats
+    // tennis_daily_odds stores at_player_key for p1/p2 if available
+    // We join via player name stored in at_player_bridge
+    let eloMap = {}, statsMap2 = {};
+    try {
+      const playerNames = [...new Set(rows.flatMap(r => [r.player1, r.player2]).filter(Boolean))];
+      if (playerNames.length > 0) {
+        const placeholders = playerNames.map((_,i) => `$${i+1}`).join(',');
+        const [eloRows, statRows] = await Promise.all([
+          pool.query(
+            `SELECT b.at_player_name, e.elo_overall, e.elo_hard, e.elo_clay, e.elo_grass
+             FROM at_player_bridge b
+             JOIN at_elo_current e ON e.at_player_key = b.at_player_key
+             WHERE b.at_player_name = ANY($1)`,
+            [playerNames]
+          ),
+          pool.query(
+            `SELECT player_name, serve_hold_pct, break_rate
+             FROM tennis_player_stats WHERE surface = 'Overall'
+             AND player_name = ANY($1)`,
+            [playerNames]
+          ).catch(() => ({ rows: [] })),
+        ]);
+        for (const r of eloRows.rows) eloMap[r.at_player_name] = r;
+        for (const r of statRows.rows) statsMap2[r.player_name] = r;
+      }
+    } catch(e) { /* enrichment optional */ }
+
     const predictions = rows.map(r => {
+      const p1elo = eloMap[r.player1] || {};
+      const p2elo = eloMap[r.player2] || {};
+      const p1stats = statsMap2[r.player1] || {};
+      const p2stats = statsMap2[r.player2] || {};
+      const p1data = {
+        elo_overall: r.p1_elo,
+        elo_hard:  p1elo.elo_hard  || null,
+        elo_clay:  p1elo.elo_clay  || null,
+        elo_grass: p1elo.elo_grass || null,
+        serve_hold_pct: p1stats.serve_hold_pct || null,
+        break_rate:     p1stats.break_rate     || null,
+      };
+      const p2data = {
+        elo_overall: r.p2_elo,
+        elo_hard:  p2elo.elo_hard  || null,
+        elo_clay:  p2elo.elo_clay  || null,
+        elo_grass: p2elo.elo_grass || null,
+        serve_hold_pct: p2stats.serve_hold_pct || null,
+        break_rate:     p2stats.break_rate     || null,
+      };
       const e1 = parseFloat(r.edge_p1) || 0;
       const e2 = parseFloat(r.edge_p2) || 0;
       const bestEdge = Math.max(e1, e2);
@@ -64,6 +112,7 @@ router.get('/', async (req, res) => {
       return {
         ...r,
         e1, e2, bestEdge, betOn, betOdds, implied_bet_pct, time_ist,
+        p1data, p2data,
         has_odds: !!(r.odds_p1 && r.odds_p2),
         // Already percentages — use directly as strings for template
         model_p1_pct: r.model_p1 != null ? parseFloat(r.model_p1).toFixed(1) : '50.0',
