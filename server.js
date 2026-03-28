@@ -29,7 +29,7 @@ async function preloadCache() {
       pool.query(
         "SELECT p.player_id, (p.first_name || ' ' || p.last_name) AS player_name, " +
         "e.elo_overall, e.elo_hard, e.elo_clay, e.elo_grass " +
-        "FROM tennis_players p JOIN at_elo_current e ON e.sackmann_id = p.player_id " +
+        "FROM tennis_players p JOIN tennis_elo_current e ON e.player_id = p.player_id " +
         "WHERE e.elo_overall IS NOT NULL"
       ),
       pool.query("SELECT player_id, serve_hold_pct, break_rate FROM tennis_player_stats WHERE surface = 'Overall'"),

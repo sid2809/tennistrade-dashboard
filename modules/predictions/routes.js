@@ -17,10 +17,16 @@ router.get('/', async (req, res) => {
       date = ist.toISOString().slice(0, 10);
     }
 
-    // Read from tennis_daily_odds — populated by step10 each morning at 8 AM IST
-    // This is the single source of truth. No separate API-Tennis calls here.
+    // Read from tennis_daily_odds — populated by step10 at 8 AM IST
+    // All values already in human-readable units:
+    //   model_p1/p2  = percentage  e.g. 85.0
+    //   implied_p1/2 = percentage  e.g. 53.0  (overround-removed)
+    //   edge_p1/p2   = percentage pts e.g. 31.8
+    //   p1_elo/p2_elo = raw Elo    e.g. 1722.3
+    //   odds_p1/p2   = decimal     e.g. 1.88
     const result = await pool.query(
       `SELECT * FROM tennis_daily_odds WHERE scan_date = $1
+       AND p1_conf != 'miss' AND p2_conf != 'miss'
        ORDER BY
          CASE WHEN tour ILIKE '%ATP%' AND tour NOT ILIKE '%ITF%' THEN 0
               WHEN tour ILIKE '%WTA%' AND tour NOT ILIKE '%ITF%' THEN 1
@@ -36,13 +42,13 @@ router.get('/', async (req, res) => {
       const e1 = parseFloat(r.edge_p1) || 0;
       const e2 = parseFloat(r.edge_p2) || 0;
       const bestEdge = Math.max(e1, e2);
-      const betOn  = e1 > e2 ? r.player1 : r.player2;
+      const betOn   = e1 > e2 ? r.player1 : r.player2;
       const betOdds = e1 > e2 ? r.odds_p1 : r.odds_p2;
 
-      // implied_p1 in DB is already overround-normalised (from step10)
-      const implied_p1_pct = r.implied_p1 ? (r.implied_p1 * 100).toFixed(0) : null;
-      const implied_p2_pct = r.implied_p1 ? ((1 - r.implied_p1) * 100).toFixed(0) : null;
-      const implied_bet_pct = e1 > e2 ? implied_p1_pct : implied_p2_pct;
+      // implied already in % from step10
+      const implied_bet_pct = e1 > e2
+        ? (r.implied_p1 != null ? Math.round(r.implied_p1) : null)
+        : (r.implied_p2 != null ? Math.round(r.implied_p2) : null);
 
       // Convert UTC time to IST
       let time_ist = 'TBD';
@@ -57,12 +63,15 @@ router.get('/', async (req, res) => {
 
       return {
         ...r,
-        e1, e2, bestEdge, betOn, betOdds,
-        implied_p1_pct, implied_p2_pct, implied_bet_pct,
-        time_ist,
+        e1, e2, bestEdge, betOn, betOdds, implied_bet_pct, time_ist,
         has_odds: !!(r.odds_p1 && r.odds_p2),
-        model_p1_pct: r.model_p1 ? (r.model_p1 * 100).toFixed(1) : '50.0',
-        model_p2_pct: r.model_p2 ? (r.model_p2 * 100).toFixed(1) : '50.0',
+        // Already percentages — use directly as strings for template
+        model_p1_pct: r.model_p1 != null ? parseFloat(r.model_p1).toFixed(1) : '50.0',
+        model_p2_pct: r.model_p2 != null ? parseFloat(r.model_p2).toFixed(1) : '50.0',
+        implied_p1_pct: r.implied_p1 != null ? Math.round(r.implied_p1) : null,
+        implied_p2_pct: r.implied_p2 != null ? Math.round(r.implied_p2) : null,
+        p1_elo: r.p1_elo != null ? Math.round(r.p1_elo) : 1500,
+        p2_elo: r.p2_elo != null ? Math.round(r.p2_elo) : 1500,
       };
     });
 
@@ -74,12 +83,11 @@ router.get('/', async (req, res) => {
     });
 
     const tradeable = predictions.filter(m => {
-      if (m.p1_conf === 'miss' || m.p2_conf === 'miss') return false;
       if (EXCLUDED_TOURS.some(t => (m.tour || '').includes(t))) return false;
-      return Math.abs((m.p1_elo || 1500) - (m.p2_elo || 1500)) > 100;
+      return Math.abs(m.p1_elo - m.p2_elo) > 100;
     }).map(m => ({
       ...m,
-      elo_gap: Math.abs((m.p1_elo || 1500) - (m.p2_elo || 1500)),
+      elo_gap: Math.abs(m.p1_elo - m.p2_elo),
       strategies: buildStrategies(m),
     })).filter(m => m.strategies.length > 0);
 
@@ -119,7 +127,7 @@ router.get('/', async (req, res) => {
 
 function buildStrategies(m) {
   const strats = [];
-  const eloGap = Math.abs((m.p1_elo || 1500) - (m.p2_elo || 1500));
+  const eloGap = Math.abs(m.p1_elo - m.p2_elo);
   if (eloGap > 150) strats.push({ type: 'T1', desc: 'Back after break — wait for break-back', confidence: eloGap > 250 ? 'High' : 'Medium' });
   if (eloGap > 200) strats.push({ type: 'T4', desc: 'Lay at 1.02–1.08 after double break', confidence: 'Low-Med' });
   if (m.has_odds && m.bestEdge >= 20) strats.push({ type: 'T6', desc: `Value bet — ${m.bestEdge.toFixed(0)}% edge`, confidence: 'High' });
