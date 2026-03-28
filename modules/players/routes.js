@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
       if (allSurfaces.length > 0) {
         player = { name: allSurfaces[0].player_name, id: allSurfaces[0].player_id };
         const elo = await pool.query(
-          `SELECT * FROM tennis_elo_current WHERE player_id = $1`, [player.id]
+          `SELECT * FROM tennis_elo_current WHERE player_id = $1 ORDER BY elo_overall DESC NULLS LAST LIMIT 1`, [player.id]
         ).catch(() => ({ rows: [] }));
         if (elo.rows[0]) player.elo = elo.rows[0];
       }
